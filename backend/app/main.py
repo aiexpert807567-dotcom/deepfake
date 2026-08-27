@@ -13,19 +13,31 @@ from app.workers.manager import worker_manager
 from app.storage.local_storage import storage
 from app.utils.media import analyze_media_file, assess_reference_quality
 
-app = FastAPI(title="Private AI Face Studio API", version="1.1.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app = FastAPI(title="Private AI Face Studio API", version="1.2.0")
+
+# Browser requests originate from Vercel. Keep this explicit because the
+# frontend sends an Authorization header and credentials are enabled.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://deepfake-steel.vercel.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
+)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "ai-face-studio-backend", "version": "1.2.0"}
 
 @app.post("/api/auth/login")
 async def login(username: str = Form(...), password: str = Form(...)):
     if username != settings.admin_username or password != settings.admin_password:
         raise HTTPException(status_code=401, detail="Invalid admin credentials")
-    token = create_access_token({"sub": username})
-    return {"access_token": token, "token_type": "bearer", "user": {"username": username}}
+    return {"access_token": create_access_token({"sub": username}), "token_type": "bearer", "user": {"username": username}}
 
 @app.get("/api/auth/me")
 async def get_me(user: dict = Depends(verify_token)):
@@ -41,6 +53,7 @@ async def upload_target(file: UploadFile = File(...), user: dict = Depends(verif
             raise HTTPException(status_code=400, detail=f"Exceeds max duration of {settings.max_video_duration_sec}s")
         return {"media_id": file_id, "filename": file_path.name, "analysis": analysis}
     except HTTPException:
+        storage.cleanup_file(file_path)
         raise
     except Exception as exc:
         storage.cleanup_file(file_path)
@@ -49,8 +62,11 @@ async def upload_target(file: UploadFile = File(...), user: dict = Depends(verif
 @app.post("/api/media/upload-reference")
 async def upload_reference(file: UploadFile = File(...), user: dict = Depends(verify_token)):
     file_id, file_path = await storage.save_upload(file)
-    analysis = assess_reference_quality(file_path)
-    return {"reference_id": file_id, "filename": file_path.name, "analysis": analysis}
+    try:
+        return {"reference_id": file_id, "filename": file_path.name, "analysis": assess_reference_quality(file_path)}
+    except Exception as exc:
+        storage.cleanup_file(file_path)
+        raise HTTPException(status_code=400, detail=f"Reference analysis failed: {exc}")
 
 @app.get("/api/media/{media_id}/download")
 async def download_media(media_id: str, user: dict = Depends(verify_token)):
@@ -60,7 +76,10 @@ async def download_media(media_id: str, user: dict = Depends(verify_token)):
 @app.get("/api/media/{media_id}/detect-faces")
 async def detect_faces(media_id: str, user: dict = Depends(verify_token)):
     storage.get_upload_path(media_id)
-    return {"media_id": media_id, "faces": [{"id": "face_0", "label": "Face 1 (Primary Target)", "confidence": 0.98}, {"id": "face_1", "label": "Face 2 (Background)", "confidence": 0.93}]}
+    return {"media_id": media_id, "faces": [
+        {"id": "face_0", "label": "Face 1 (Primary Target)", "confidence": 0.98},
+        {"id": "face_1", "label": "Face 2 (Background)", "confidence": 0.93}
+    ]}
 
 @app.post("/api/jobs", response_model=JobResponse)
 async def create_job(req: JobCreateRequest, user: dict = Depends(verify_token)):
@@ -82,7 +101,7 @@ async def get_job(job_id: str, user: dict = Depends(verify_token)):
 @app.post("/api/worker/power")
 async def worker_power(req: WorkerPowerRequest, user: dict = Depends(verify_token)):
     if not req.enabled and job_manager.get_active_job():
-        raise HTTPException(status_code=409, detail="Cannot turn off GPU while a job is processing.")
+        raise HTTPException(status_code=409, detail="Cannot turn off GPU while a job is processing. Wait for completion or stop the active job first.")
     worker_manager.set_power(req.enabled)
     return worker_manager.get_status()
 
