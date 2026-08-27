@@ -14,14 +14,7 @@ from app.storage.local_storage import storage
 from app.utils.media import analyze_media_file, assess_reference_quality
 
 app = FastAPI(title="Private AI Face Studio API", version="1.1.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/health")
 async def health():
@@ -47,9 +40,11 @@ async def upload_target(file: UploadFile = File(...), user: dict = Depends(verif
             storage.cleanup_file(file_path)
             raise HTTPException(status_code=400, detail=f"Exceeds max duration of {settings.max_video_duration_sec}s")
         return {"media_id": file_id, "filename": file_path.name, "analysis": analysis}
-    except Exception:
-        storage.cleanup_file(file_path)
+    except HTTPException:
         raise
+    except Exception as exc:
+        storage.cleanup_file(file_path)
+        raise HTTPException(status_code=400, detail=f"Media analysis failed: {exc}")
 
 @app.post("/api/media/upload-reference")
 async def upload_reference(file: UploadFile = File(...), user: dict = Depends(verify_token)):
@@ -65,10 +60,7 @@ async def download_media(media_id: str, user: dict = Depends(verify_token)):
 @app.get("/api/media/{media_id}/detect-faces")
 async def detect_faces(media_id: str, user: dict = Depends(verify_token)):
     storage.get_upload_path(media_id)
-    return {"media_id": media_id, "faces": [
-        {"id": "face_0", "label": "Face 1 (Primary Target)", "confidence": 0.98},
-        {"id": "face_1", "label": "Face 2 (Background)", "confidence": 0.93}
-    ]}
+    return {"media_id": media_id, "faces": [{"id": "face_0", "label": "Face 1 (Primary Target)", "confidence": 0.98}, {"id": "face_1", "label": "Face 2 (Background)", "confidence": 0.93}]}
 
 @app.post("/api/jobs", response_model=JobResponse)
 async def create_job(req: JobCreateRequest, user: dict = Depends(verify_token)):
@@ -89,12 +81,14 @@ async def get_job(job_id: str, user: dict = Depends(verify_token)):
 
 @app.post("/api/worker/power")
 async def worker_power(req: WorkerPowerRequest, user: dict = Depends(verify_token)):
-    if not req.enabled:
-        active = job_manager.get_active_job()
-        if active:
-            raise HTTPException(status_code=409, detail="Cannot turn off GPU while a job is processing. Wait for completion or stop the active job first.")
+    if not req.enabled and job_manager.get_active_job():
+        raise HTTPException(status_code=409, detail="Cannot turn off GPU while a job is processing.")
     worker_manager.set_power(req.enabled)
     return worker_manager.get_status()
+
+@app.get("/api/worker/power-status")
+async def worker_power_status(authorized: bool = Depends(verify_worker_token)):
+    return {"enabled": worker_manager.enabled}
 
 @app.post("/api/worker/heartbeat")
 async def worker_heartbeat(hb: WorkerHeartbeat, authorized: bool = Depends(verify_worker_token)):
