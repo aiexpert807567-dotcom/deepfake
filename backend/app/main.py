@@ -39,9 +39,9 @@ async def login(username: str = Form(...), password: str = Form(...)):
         raise HTTPException(status_code=401, detail="Invalid admin credentials")
     return {"access_token": create_access_token({"sub": username}), "token_type": "bearer", "user": {"username": username}}
 
-@app.get("/api/auth/me")
-async def get_me(user: dict = Depends(verify_token)):
-    return {"username": user.get("sub"), "role": "admin"}
+@app.get("/api/worker/status")
+async def get_worker_status():
+    return worker_manager.get_status()
 
 @app.post("/api/media/upload-target")
 async def upload_target(file: UploadFile = File(...), user: dict = Depends(verify_token)):
@@ -111,6 +111,7 @@ async def worker_power_status(authorized: bool = Depends(verify_worker_token)):
 
 @app.post("/api/worker/heartbeat")
 async def worker_heartbeat(hb: WorkerHeartbeat, authorized: bool = Depends(verify_worker_token)):
+    worker_manager.reset_shutdown()
     worker_manager.record_heartbeat(hb)
     return {"status": "ACK", "enabled": worker_manager.enabled}
 
@@ -144,9 +145,54 @@ async def worker_upload_result(job_id: str = Form(...), result_file: UploadFile 
     job_manager.update_job_status(job_id, JobStatus.COMPLETED, "Completed Successfully", 100.0, result_url=result_url)
     return {"result_url": result_url}
 
-@app.get("/api/worker/status")
-async def get_worker_status(user: dict = Depends(verify_token)):
-    return worker_manager.get_status()
+@app.post("/api/media/upload-target")
+async def upload_target(file: UploadFile = File(...)):
+    try:
+        file_id, file_path = await storage.save_upload(file)
+        analysis = analyze_media_file(file_path)
+        return {"media_id": file_id, "filename": file_path.name, "analysis": analysis}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Upload failed: {str(e)}")
+
+@app.post("/api/media/upload-reference")
+async def upload_reference(file: UploadFile = File(...)):
+    file_id, file_path = await storage.save_upload(file)
+    analysis = assess_reference_quality(file_path)
+    return {"reference_id": file_id, "filename": file_path.name, "analysis": analysis}
+
+@app.get("/api/media/{media_id}/detect-faces")
+async def detect_faces(media_id: str):
+    return {
+        "media_id": media_id,
+        "faces": [
+            {"id": "face_0", "label": "Face 1 (Primary Target)", "confidence": 0.98},
+            {"id": "face_1", "label": "Face 2 (Background Person)", "confidence": 0.92}
+        ]
+    }
+
+@app.post("/api/jobs", response_model=JobResponse)
+async def create_job(req: JobCreateRequest):
+    target_path = storage.get_upload_path(req.target_media_id)
+    analysis = analyze_media_file(target_path)
+    return job_manager.create_job(req, duration_sec=analysis.get("duration_sec", 0.0))
+
+@app.get("/api/jobs", response_model=list[JobResponse])
+async def list_jobs():
+    return job_manager.list_jobs()
+
+@app.get("/api/jobs/{job_id}", response_model=JobResponse)
+async def get_job(job_id: str):
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+@app.delete("/api/jobs/{job_id}")
+async def delete_job(job_id: str):
+    if job_id in job_manager.jobs:
+        del job_manager.jobs[job_id]
+        return {"status": "DELETED"}
+    raise HTTPException(status_code=404, detail="Job not found")
 
 @app.get("/api/results/{filename}")
 async def download_result(filename: str):

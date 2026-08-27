@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import requests
 from pathlib import Path
@@ -17,7 +18,9 @@ processor = JobProcessor()
 
 def run_worker_loop():
     print(f"=== Private AI Face Studio GPU Worker: {WORKER_ID} ===")
-    print(f"API Endpoint: {API_URL}")
+    print(f"Connected Backend: {API_URL}")
+    print("[*] Worker is active and waiting for jobs...")
+    
     while True:
         try:
             power = session.get(f"{API_URL}/api/worker/power-status", timeout=10)

@@ -41,8 +41,8 @@ export default function Navigation() {
 
   const navItems = [
     { label: 'Studio Dashboard', href: '/', icon: LayoutDashboard },
-    { label: 'AI Generator', href: '/generate', icon: Wand2, badge: 'Pro Pipeline' },
-    { label: 'GPU Command Center', href: '/worker', icon: Cpu, count: worker.online ? 'Online' : 'Offline' },
+    { label: 'AI Generator', href: '/generate', icon: Wand2 },
+    { label: 'GPU Command Center', href: '/worker', icon: Cpu },
     { label: 'Media History', href: '/history', icon: History },
   ];
 

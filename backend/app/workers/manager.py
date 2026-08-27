@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+import time
 from typing import Optional
 from app.models.schemas import WorkerHeartbeat
 
@@ -18,7 +18,15 @@ class WorkerManager:
         if not self.enabled:
             return
         self.last_heartbeat = hb
-        self.last_seen = datetime.now(timezone.utc)
+        self.last_seen_epoch = time.time()
+
+    def request_shutdown(self):
+        self.shutdown_requested = True
+        self.last_seen_epoch = None
+        self.last_heartbeat = None
+
+    def reset_shutdown(self):
+        self.shutdown_requested = False
 
     def get_status(self) -> dict:
         if not self.enabled:

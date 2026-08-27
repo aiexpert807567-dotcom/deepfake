@@ -27,6 +27,7 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  config.baseURL = getBaseUrl();
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('studio_token');
     if (token) {
