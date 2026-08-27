@@ -1,11 +1,9 @@
 import axios from 'axios';
 
-// Public backend URL used by the deployed Vercel app.
-// Vercel can override this with NEXT_PUBLIC_API_URL, but the production
-// fallback must never be localhost.
-const PRODUCTION_API_URL = 'https://ai-face-studio-backend-d56h.onrender.com';
+// Single source of truth for the deployed API URL.
+export const PRODUCTION_API_URL = 'https://ai-face-studio-backend-d56h.onrender.com';
 
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
     const configured = process.env.NEXT_PUBLIC_API_URL;
     if (configured) return configured.replace(/\/$/, '');
@@ -22,7 +20,10 @@ const getBaseUrl = () => {
 
 export const apiClient = axios.create({
   baseURL: getBaseUrl(),
-  timeout: 120000,
+  // Render can cold-start. Uploads can also take longer than 2 minutes.
+  timeout: 10 * 60 * 1000,
+  maxContentLength: Infinity,
+  maxBodyLength: Infinity,
 });
 
 apiClient.interceptors.request.use((config) => {
