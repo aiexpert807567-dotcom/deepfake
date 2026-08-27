@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from enum import Enum
 from datetime import datetime
 
@@ -58,3 +58,6 @@ class WorkerHeartbeat(BaseModel):
     ffmpeg_available: bool = False
     status: str = "IDLE"
     current_job_id: Optional[str] = None
+
+class WorkerPowerRequest(BaseModel):
+    enabled: bool
