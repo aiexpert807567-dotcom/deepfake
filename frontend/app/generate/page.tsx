@@ -174,11 +174,22 @@ export default function GenerateStudioPage() {
                         : 'border-studio-700 bg-studio-800/80 hover:border-gray-500'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-white text-base">{face.label}</span>
-                      {selectedFaceId === face.id && <CheckCircle2 className="w-5 h-5 text-studio-accent" />}
+                    <div className="flex items-center gap-4">
+                      {face.thumbnail && (
+                        <img
+                          src={`data:image/jpeg;base64,${face.thumbnail}`}
+                          alt={face.label}
+                          className="w-16 h-16 rounded-xl object-cover border border-studio-700 shrink-0"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center justify-between mb-1 gap-2">
+                          <span className="font-bold text-white text-base">{face.label}</span>
+                          {selectedFaceId === face.id && <CheckCircle2 className="w-5 h-5 text-studio-accent shrink-0" />}
+                        </div>
+                        <p className="text-xs text-gray-400">Detection Confidence: {(face.confidence * 100).toFixed(0)}%</p>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-400">Detection Confidence: {(face.confidence * 100).toFixed(0)}%</p>
                   </div>
                 ))}
               </div>

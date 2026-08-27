@@ -1,4 +1,5 @@
 import cv2
+import base64
 import urllib.request
 import numpy as np
 from pathlib import Path
@@ -35,6 +36,22 @@ def _load_representative_frame(path: Path) -> np.ndarray:
         raise ValueError("Could not read the uploaded image")
     return img
 
+def _crop_thumbnail(frame: np.ndarray, x: float, y: float, fw: float, fh: float, pad: float = 0.35) -> str:
+    h, w = frame.shape[:2]
+    pad_x, pad_y = fw * pad, fh * pad
+    x1 = max(int(x - pad_x), 0)
+    y1 = max(int(y - pad_y), 0)
+    x2 = min(int(x + fw + pad_x), w)
+    y2 = min(int(y + fh + pad_y), h)
+    crop = frame[y1:y2, x1:x2]
+    if crop.size == 0:
+        crop = frame
+    crop = cv2.resize(crop, (160, 160))
+    ok, buf = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    if not ok:
+        return ""
+    return base64.b64encode(buf).decode("ascii")
+
 def detect_faces_in_media(path: Path) -> List[Dict]:
     frame = _load_representative_frame(path)
     h, w = frame.shape[:2]
@@ -51,10 +68,12 @@ def detect_faces_in_media(path: Path) -> List[Dict]:
     for i, f in enumerate(faces_sorted):
         x, y, fw, fh = [float(v) for v in f[0:4]]
         conf = float(f[14]) if len(f) > 14 else 0.9
+        thumbnail = _crop_thumbnail(frame, x, y, fw, fh)
         results.append({
             "id": f"face_{i}",
             "label": f"Face {i + 1}" + (" (Primary Target)" if i == 0 else ""),
             "confidence": round(conf, 4),
             "bbox": {"x1": x, "y1": y, "x2": x + fw, "y2": y + fh},
+            "thumbnail": thumbnail,
         })
     return results
