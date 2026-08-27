@@ -42,7 +42,7 @@ async def get_worker_status():
     return worker_manager.get_status()
 
 @app.post("/api/media/upload-target")
-async def upload_target(file: UploadFile = File(...), user: dict = Depends(verify_token)):
+async def upload_target(file: UploadFile = File(...)):
     file_id, file_path = await storage.save_upload(file)
     try:
         analysis = analyze_media_file(file_path)
@@ -58,7 +58,7 @@ async def upload_target(file: UploadFile = File(...), user: dict = Depends(verif
         raise HTTPException(status_code=400, detail=f"Media analysis failed: {exc}")
 
 @app.post("/api/media/upload-reference")
-async def upload_reference(file: UploadFile = File(...), user: dict = Depends(verify_token)):
+async def upload_reference(file: UploadFile = File(...)):
     file_id, file_path = await storage.save_upload(file)
     try:
         return {"reference_id": file_id, "filename": file_path.name, "analysis": assess_reference_quality(file_path)}
@@ -67,12 +67,12 @@ async def upload_reference(file: UploadFile = File(...), user: dict = Depends(ve
         raise HTTPException(status_code=400, detail=f"Reference analysis failed: {exc}")
 
 @app.get("/api/media/{media_id}/download")
-async def download_media(media_id: str, user: dict = Depends(verify_token)):
+async def download_media(media_id: str):
     path = storage.get_upload_path(media_id)
     return FileResponse(str(path), filename=path.name)
 
 @app.get("/api/media/{media_id}/detect-faces")
-async def detect_faces(media_id: str, user: dict = Depends(verify_token)):
+async def detect_faces(media_id: str):
     storage.get_upload_path(media_id)
     return {"media_id": media_id, "faces": [
         {"id": "face_0", "label": "Face 1 (Primary Target)", "confidence": 0.98},
@@ -80,7 +80,7 @@ async def detect_faces(media_id: str, user: dict = Depends(verify_token)):
     ]}
 
 @app.post("/api/jobs", response_model=JobResponse)
-async def create_job(req: JobCreateRequest, user: dict = Depends(verify_token)):
+async def create_job(req: JobCreateRequest):
     target_path = storage.get_upload_path(req.target_media_id)
     analysis = analyze_media_file(target_path)
     return job_manager.create_job(req, duration_sec=analysis.get("duration_sec", 0.0))
@@ -90,28 +90,28 @@ async def list_jobs(user: dict = Depends(verify_token)):
     return job_manager.list_jobs()
 
 @app.get("/api/jobs/{job_id}", response_model=JobResponse)
-async def get_job(job_id: str, user: dict = Depends(verify_token)):
+async def get_job(job_id: str):
     job = job_manager.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
 @app.delete("/api/jobs/{job_id}")
-async def delete_job(job_id: str, user: dict = Depends(verify_token)):
+async def delete_job(job_id: str):
     if job_id in job_manager.jobs:
         del job_manager.jobs[job_id]
         return {"status": "DELETED"}
     raise HTTPException(status_code=404, detail="Job not found")
 
 @app.get("/api/results/{filename}")
-async def download_result(filename: str, user: dict = Depends(verify_token)):
+async def download_result(filename: str):
     path = storage.results_dir / filename
     if not path.exists():
         raise HTTPException(status_code=404, detail="Result media not found")
     return FileResponse(str(path), filename=path.name)
 
 @app.post("/api/worker/power")
-async def worker_power(req: WorkerPowerRequest, user: dict = Depends(verify_token)):
+async def worker_power(req: WorkerPowerRequest):
     if not req.enabled and job_manager.get_active_job():
         raise HTTPException(status_code=409, detail="Cannot turn off GPU while a job is processing. Wait for completion or stop the active job first.")
     worker_manager.set_power(req.enabled)
