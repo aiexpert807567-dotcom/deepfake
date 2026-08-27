@@ -12,6 +12,7 @@ from app.jobs.manager import job_manager
 from app.workers.manager import worker_manager
 from app.storage.local_storage import storage
 from app.utils.media import analyze_media_file, assess_reference_quality
+from app.utils.face_detection import detect_faces_in_media
 
 app = FastAPI(title="Private AI Face Studio API", version="1.2.0")
 
