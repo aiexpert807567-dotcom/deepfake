@@ -1,18 +1,22 @@
 import cv2
+import urllib.request
 import numpy as np
 from pathlib import Path
 from typing import List, Dict
 
-_cascade = None
+_MODEL_PATH = Path(__file__).resolve().parent / "_models" / "face_detection_yunet.onnx"
+_MODEL_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
 
-def _get_cascade():
-    global _cascade
-    if _cascade is None:
-        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-        _cascade = cv2.CascadeClassifier(cascade_path)
-        if _cascade.empty():
-            raise RuntimeError("Failed to load Haar Cascade face detector")
-    return _cascade
+def _ensure_model() -> Path:
+    _MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not _MODEL_PATH.exists():
+        urllib.request.urlretrieve(_MODEL_URL, _MODEL_PATH)
+    return _MODEL_PATH
+
+def _create_detector(model_path: Path, size):
+    if hasattr(cv2, "FaceDetectorYN_create"):
+        return cv2.FaceDetectorYN_create(str(model_path), "", size, 0.7, 0.3, 5000)
+    return cv2.FaceDetectorYN.create(str(model_path), "", size, 0.7, 0.3, 5000)
 
 def _load_representative_frame(path: Path) -> np.ndarray:
     ext = path.suffix.lower()
@@ -33,20 +37,24 @@ def _load_representative_frame(path: Path) -> np.ndarray:
 
 def detect_faces_in_media(path: Path) -> List[Dict]:
     frame = _load_representative_frame(path)
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    cascade = _get_cascade()
-    detections = cascade.detectMultiScale(
-        gray, scaleFactor=1.1, minNeighbors=6, minSize=(60, 60)
-    )
+    h, w = frame.shape[:2]
+    model_path = _ensure_model()
+    detector = _create_detector(model_path, (w, h))
+    _, faces = detector.detect(frame)
 
-    faces = sorted(detections, key=lambda d: d[2] * d[3], reverse=True)
+    if faces is None:
+        return []
+
+    faces_sorted = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
 
     results = []
-    for i, (x, y, fw, fh) in enumerate(faces):
+    for i, f in enumerate(faces_sorted):
+        x, y, fw, fh = [float(v) for v in f[0:4]]
+        conf = float(f[14]) if len(f) > 14 else 0.9
         results.append({
             "id": f"face_{i}",
             "label": f"Face {i + 1}" + (" (Primary Target)" if i == 0 else ""),
-            "confidence": 0.9,
-            "bbox": {"x1": float(x), "y1": float(y), "x2": float(x + fw), "y2": float(y + fh)},
+            "confidence": round(conf, 4),
+            "bbox": {"x1": x, "y1": y, "x2": x + fw, "y2": y + fh},
         })
     return results
