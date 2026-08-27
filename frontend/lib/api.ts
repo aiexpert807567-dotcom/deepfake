@@ -1,5 +1,10 @@
 import axios from 'axios';
 
+// Public backend URL used by the deployed Vercel app.
+// Vercel can override this with NEXT_PUBLIC_API_URL, but the production
+// fallback must never be localhost.
+const PRODUCTION_API_URL = 'https://ai-face-studio-backend-d56h.onrender.com';
+
 const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
     const configured = process.env.NEXT_PUBLIC_API_URL;
@@ -9,10 +14,10 @@ const getBaseUrl = () => {
       return window.location.origin.replace('-3000.', '-8000.');
     }
 
-    return '';
+    return PRODUCTION_API_URL;
   }
 
-  return (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+  return (process.env.NEXT_PUBLIC_API_URL || PRODUCTION_API_URL).replace(/\/$/, '');
 };
 
 export const apiClient = axios.create({
