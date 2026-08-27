@@ -25,9 +25,8 @@ def run_worker_loop():
         try:
             power = session.get(f"{API_URL}/api/worker/power-status", timeout=10)
             if power.status_code == 200 and power.json().get("enabled") is False:
-                print("[Worker] Remote GPU switch is OFF. Sleeping...")
-                time.sleep(15)
-                continue
+                print("[Worker] Remote GPU switch is OFF. Shutting down to free the Kaggle GPU session...")
+                sys.exit(0)
 
             gpu_info = detect_gpu_environment()
             session.post(f"{API_URL}/api/worker/heartbeat", json={"worker_id": WORKER_ID, **gpu_info, "status": "IDLE"}, timeout=5)
