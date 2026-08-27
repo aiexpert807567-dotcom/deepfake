@@ -11,26 +11,17 @@ class JobManager:
         job_id = f"job_{uuid.uuid4().hex[:12]}"
         now = datetime.now(timezone.utc)
         job_data = {
-            "job_id": job_id,
-            "status": JobStatus.QUEUED,
-            "progress_percent": 0.0,
-            "current_stage": "Enqueued for GPU Worker",
-            "error_message": None,
-            "created_at": now,
-            "updated_at": now,
-            "result_url": None,
-            "target_media_type": req.media_type,
-            "duration_sec": duration_sec,
-            "warnings": [],
-            "payload": req.dict()
+            "job_id": job_id, "status": JobStatus.QUEUED, "progress_percent": 0.0,
+            "current_stage": "Enqueued for GPU Worker", "error_message": None,
+            "created_at": now, "updated_at": now, "result_url": None,
+            "target_media_type": req.media_type, "duration_sec": duration_sec,
+            "warnings": [], "payload": req.dict()
         }
         self.jobs[job_id] = job_data
         return JobResponse(**job_data)
 
     def get_job(self, job_id: str) -> Optional[JobResponse]:
-        if job_id not in self.jobs:
-            return None
-        return JobResponse(**self.jobs[job_id])
+        return JobResponse(**self.jobs[job_id]) if job_id in self.jobs else None
 
     def list_jobs(self) -> List[JobResponse]:
         return [JobResponse(**j) for j in sorted(self.jobs.values(), key=lambda x: x["created_at"], reverse=True)]
@@ -38,6 +29,14 @@ class JobManager:
     def get_next_queued_job(self) -> Optional[dict]:
         for j in self.jobs.values():
             if j["status"] == JobStatus.QUEUED:
+                return j
+        return None
+
+    def get_active_job(self) -> Optional[dict]:
+        active = {JobStatus.INITIALIZING, JobStatus.ANALYZING, JobStatus.PROCESSING, JobStatus.RESTORING,
+                  JobStatus.ENHANCING, JobStatus.ENCODING, JobStatus.UPLOADING}
+        for j in self.jobs.values():
+            if j["status"] in active:
                 return j
         return None
 
