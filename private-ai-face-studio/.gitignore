@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Next.js / Node
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Application Storage & Local Secrets
+.env
+.env.local
+.env.production
+data/storage/*
+!data/storage/.gitkeep
+data/*.db
+data/*.db-journal
+
+# ML Weights & Temporary
+models/checkpoints/*.pth
+models/checkpoints/*.onnx
+models_cache/*
+temp/
+*.zip
