@@ -74,11 +74,14 @@ async def download_media(media_id: str):
 
 @app.get("/api/media/{media_id}/detect-faces")
 async def detect_faces(media_id: str):
-    storage.get_upload_path(media_id)
-    return {"media_id": media_id, "faces": [
-        {"id": "face_0", "label": "Face 1 (Primary Target)", "confidence": 0.98},
-        {"id": "face_1", "label": "Face 2 (Background)", "confidence": 0.93}
-    ]}
+    path = storage.get_upload_path(media_id)
+    try:
+        faces = detect_faces_in_media(path)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Face detection failed: {exc}")
+    if not faces:
+        raise HTTPException(status_code=400, detail="No faces detected in the uploaded media")
+    return {"media_id": media_id, "faces": faces}
 
 @app.post("/api/jobs", response_model=JobResponse)
 async def create_job(req: JobCreateRequest):
