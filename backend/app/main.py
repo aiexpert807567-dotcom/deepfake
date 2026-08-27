@@ -32,13 +32,23 @@ app.add_middleware(
 async def debug_cv2():
     try:
         import cv2
-        return {
-            "cv2_file": getattr(cv2, "__file__", None),
+        info = {
             "cv2_version": getattr(cv2, "__version__", None),
             "has_CascadeClassifier": hasattr(cv2, "CascadeClassifier"),
-            "has_dnn": hasattr(cv2, "dnn"),
-            "sample_attrs": sorted([a for a in dir(cv2) if not a.startswith("_")])[:30],
+            "has_data": hasattr(cv2, "data"),
+            "has_dnn_readNetFromCaffe": hasattr(cv2.dnn, "readNetFromCaffe") if hasattr(cv2, "dnn") else False,
+            "has_dnn_readNetFromONNX": hasattr(cv2.dnn, "readNetFromONNX") if hasattr(cv2, "dnn") else False,
+            "has_FaceDetectorYN": hasattr(cv2, "FaceDetectorYN") or hasattr(cv2, "FaceDetectorYN_create"),
         }
+        try:
+            info["data_haarcascades"] = cv2.data.haarcascades
+            import os
+            info["haarcascades_dir_exists"] = os.path.isdir(cv2.data.haarcascades)
+            if info["haarcascades_dir_exists"]:
+                info["haarcascade_files_sample"] = os.listdir(cv2.data.haarcascades)[:5]
+        except Exception as exc:
+            info["data_error"] = str(exc)
+        return info
     except Exception as exc:
         return {"import_error": str(exc)}
 
