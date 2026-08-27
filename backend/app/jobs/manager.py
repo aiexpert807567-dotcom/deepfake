@@ -5,6 +5,10 @@ from app.models.schemas import JobResponse, JobStatus, JobCreateRequest
 
 class JobManager:
     def __init__(self):
+        # Render's local filesystem is not durable across restarts, so this
+        # in-memory queue is intentionally simple but should not be treated as
+        # persistent history. A durable DB can be introduced later without
+        # changing the API contract.
         self.jobs: Dict[str, dict] = {}
 
     def create_job(self, req: JobCreateRequest, duration_sec: Optional[float] = None) -> JobResponse:
@@ -15,7 +19,7 @@ class JobManager:
             "current_stage": "Enqueued for GPU Worker", "error_message": None,
             "created_at": now, "updated_at": now, "result_url": None,
             "target_media_type": req.media_type, "duration_sec": duration_sec,
-            "warnings": [], "payload": req.dict()
+            "warnings": [], "payload": req.model_dump()
         }
         self.jobs[job_id] = job_data
         return JobResponse(**job_data)
