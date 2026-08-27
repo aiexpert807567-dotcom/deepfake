@@ -20,6 +20,13 @@ class JobProcessor:
         media_type = job_payload.get("media_type", "image")
         out_dir = Path(tempfile.mkdtemp(prefix="studio_proc_"))
         progress_cb(10.0, "ANALYZING", "Aggregating reference angles")
+        ref_images = [cv2.imread(str(p)) for p in reference_files]
+        try:
+            identity = self.identity_aggregator.build_unified_identity(ref_images)
+            print(f"[Identity] Built embedding from {identity['num_references_used']}/{len(ref_images)} reference photos, embedding shape: {identity['embedding'].shape}")
+        except Exception as exc:
+            print(f"[Identity] WARNING: identity build failed (non-fatal for now): {exc}")
+            identity = None
 
         if media_type == "image":
             progress_cb(30.0, "PROCESSING", "Applying face transformation")

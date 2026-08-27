@@ -70,10 +70,12 @@ export default function GenerateStudioPage() {
   const handleStartGeneration = async () => {
     setIsGenerating(true);
     try {
+      const chosenFace = detectedFaces.find(f => f.id === selectedFaceId);
       const res = await apiClient.post('/api/jobs', {
         media_type: targetMedia?.analysis?.media_type || 'image',
         target_media_id: targetMedia?.media_id,
         selected_face_id: selectedFaceId,
+        target_face_bbox: chosenFace?.bbox || null,
         reference_ids: references.map(r => r.reference_id),
         quality: 'maximum',
         face_restoration: true,

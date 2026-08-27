@@ -1,7 +1,9 @@
-torch>=2.2.0
-torchvision>=0.17.0
+insightface
 numpy>=1.26.0
+onnxruntime-gpu
 opencv-python-headless>=4.9.0
 pillow>=10.3.0
 requests>=2.31.0
+torch>=2.2.0
+torchvision>=0.17.0
 tqdm>=4.66.0

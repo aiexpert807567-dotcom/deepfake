@@ -21,10 +21,17 @@ class QualityPreset(str, Enum):
     HIGH = "high"
     MAXIMUM = "maximum"
 
+class FaceBBox(BaseModel):
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
 class JobCreateRequest(BaseModel):
     media_type: str
     target_media_id: str
     selected_face_id: str
+    target_face_bbox: Optional[FaceBBox] = None
     reference_ids: List[str]
     quality: QualityPreset = QualityPreset.MAXIMUM
     resolution: str = "original"
