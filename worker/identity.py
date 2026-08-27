@@ -51,3 +51,6 @@ class IdentityAggregator:
             "source_face": best_face,
             "num_references_used": len(embeddings),
         }
+
+# Reusable across modules so we don't load buffalo_l twice
+get_face_app = _get_face_app
