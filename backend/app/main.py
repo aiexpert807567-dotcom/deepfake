@@ -28,6 +28,20 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
+@app.get("/debug/cv2")
+async def debug_cv2():
+    try:
+        import cv2
+        return {
+            "cv2_file": getattr(cv2, "__file__", None),
+            "cv2_version": getattr(cv2, "__version__", None),
+            "has_CascadeClassifier": hasattr(cv2, "CascadeClassifier"),
+            "has_dnn": hasattr(cv2, "dnn"),
+            "sample_attrs": sorted([a for a in dir(cv2) if not a.startswith("_")])[:30],
+        }
+    except Exception as exc:
+        return {"import_error": str(exc)}
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "ai-face-studio-backend", "version": "1.2.0"}
