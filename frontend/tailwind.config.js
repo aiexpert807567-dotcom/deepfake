@@ -8,12 +8,28 @@ module.exports = {
     extend: {
       colors: {
         studio: {
-          950: '#090a0f',
-          900: '#10121a',
-          800: '#181b26',
-          700: '#232838',
+          950: '#06070a',
+          900: '#0c0e15',
+          850: '#11141e',
+          800: '#171b28',
+          750: '#1d2334',
+          700: '#262e44',
+          600: '#384364',
           accent: '#6366f1',
-          accentHover: '#4f46e5',
+          accentGlow: '#4f46e5',
+          cyan: '#06b6d4',
+          emerald: '#10b981',
+          rose: '#f43f5e',
+        }
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'glow': 'glow 2s ease-in-out infinite alternate',
+      },
+      keyframes: {
+        glow: {
+          '0%': { boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)' },
+          '100%': { boxShadow: '0 0 25px rgba(99, 102, 241, 0.8)' },
         }
       }
     },
