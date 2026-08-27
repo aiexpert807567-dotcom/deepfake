@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Navigation from '../../components/Navigation';
 import { History, RefreshCw, Download, CheckCircle2, XCircle, Clock3 } from 'lucide-react';
-import { apiClient } from '../../lib/api';
+import { apiClient, getBaseUrl } from '../../lib/api';
 
 export default function HistoryPage() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -11,18 +11,21 @@ export default function HistoryPage() {
 
   const load = async () => {
     setLoading(true); setError('');
-    try { const res = await apiClient.get('/api/jobs'); setJobs(res.data || []); }
-    catch (err: any) { setError(err.response?.data?.detail || 'Unable to load history. Check your Render API URL.'); }
-    finally { setLoading(false); }
+    try {
+      const res = await apiClient.get('/api/jobs');
+      setJobs(Array.isArray(res.data) ? res.data : []);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Unable to load history.');
+    } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); const timer = setInterval(load, 5000); return () => clearInterval(timer); }, []);
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const resultUrl = (job: any) => {
-    if (!job.result_url) return '#';
-    const base = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
-    return `${base}${job.result_url}`;
-  };
+  const resultUrl = (job: any) => job.result_url ? `${getBaseUrl()}${job.result_url}` : '#';
 
   return <div className="flex bg-studio-950 text-gray-100 min-h-screen"><Navigation /><main className="flex-1 p-10 overflow-y-auto"><div className="max-w-5xl mx-auto">
     <div className="flex items-center justify-between mb-8"><div><h2 className="text-3xl font-extrabold text-white flex items-center gap-3"><History className="w-7 h-7 text-studio-accent" /> Media History</h2><p className="text-sm text-gray-400 mt-1">Jobs submitted to the GPU processing queue.</p></div><button onClick={load} className="px-4 py-2 rounded-xl border border-studio-700 bg-studio-900 hover:bg-studio-800 text-sm flex items-center gap-2"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh</button></div>
