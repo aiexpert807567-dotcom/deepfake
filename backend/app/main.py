@@ -86,7 +86,7 @@ async def create_job(req: JobCreateRequest):
     return job_manager.create_job(req, duration_sec=analysis.get("duration_sec", 0.0))
 
 @app.get("/api/jobs", response_model=list[JobResponse])
-async def list_jobs(user: dict = Depends(verify_token)):
+async def list_jobs():
     return job_manager.list_jobs()
 
 @app.get("/api/jobs/{job_id}", response_model=JobResponse)
