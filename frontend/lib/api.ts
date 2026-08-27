@@ -5,12 +5,10 @@ const getBaseUrl = () => {
     const configured = process.env.NEXT_PUBLIC_API_URL;
     if (configured) return configured.replace(/\/$/, '');
 
-    // GitHub Codespaces convenience fallback.
     if (window.location.hostname.includes('-3000.')) {
       return window.location.origin.replace('-3000.', '-8000.');
     }
 
-    // Do not call localhost from a deployed Vercel browser.
     return '';
   }
 
@@ -32,3 +30,14 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== 'undefined' && error.response?.status === 401 && !window.location.pathname.startsWith('/login')) {
+      localStorage.removeItem('studio_token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
