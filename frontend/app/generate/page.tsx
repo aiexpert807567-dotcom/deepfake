@@ -14,7 +14,21 @@ export default function GenerateStudioPage() {
   const [references, setReferences] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeJob, setActiveJob] = useState<any>(null);
+  const [jobStatus, setJobStatus] = useState<any>(null);
   const [workerOnline, setWorkerOnline] = useState(false);
+
+  useEffect(() => {
+    if (!activeJob?.job_id) return;
+    const pollJob = async () => {
+      try {
+        const res = await apiClient.get(`/api/jobs/${activeJob.job_id}`);
+        setJobStatus(res.data);
+      } catch {}
+    };
+    pollJob();
+    const interval = setInterval(pollJob, 3000);
+    return () => clearInterval(interval);
+  }, [activeJob]);
 
   useEffect(() => {
     const checkWorker = async () => {
@@ -271,13 +285,46 @@ export default function GenerateStudioPage() {
           {/* STEP 5: Active Processing Monitor */}
           {step === 5 && (
             <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-10 text-center shadow-2xl">
-              <div className="animate-spin w-14 h-14 border-4 border-studio-accent border-t-transparent rounded-full mx-auto mb-6 shadow-lg" />
-              <h3 className="text-2xl font-bold text-white mb-2">GPU Transformation in Progress</h3>
-              <p className="text-sm text-gray-400 mb-6">Processing on Kaggle NVIDIA T4 GPU node...</p>
-              <div className="w-full bg-studio-800 rounded-full h-3 mb-3 overflow-hidden">
-                <div className="bg-gradient-to-r from-studio-accent to-cyan-400 h-full rounded-full animate-pulse" style={{ width: '65%' }} />
-              </div>
-              <p className="text-xs text-indigo-400 font-mono">Job ID: {activeJob?.job_id}</p>
+              {jobStatus?.status === 'COMPLETED' ? (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 className="w-9 h-9" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Transformation Complete</h3>
+                  <p className="text-sm text-gray-400 mb-6">Your result is ready.</p>
+                  {jobStatus.result_url && (
+                    <a
+                      href={`${apiClient.defaults.baseURL}${jobStatus.result_url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 bg-studio-accent hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold transition"
+                    >
+                      View / Download Result
+                    </a>
+                  )}
+                </>
+              ) : jobStatus?.status === 'FAILED' ? (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-6">
+                    <AlertCircle className="w-9 h-9" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Transformation Failed</h3>
+                  <p className="text-sm text-rose-400 mb-6">{jobStatus.error_message || 'An unknown error occurred.'}</p>
+                </>
+              ) : (
+                <>
+                  <div className="animate-spin w-14 h-14 border-4 border-studio-accent border-t-transparent rounded-full mx-auto mb-6 shadow-lg" />
+                  <h3 className="text-2xl font-bold text-white mb-2">GPU Transformation in Progress</h3>
+                  <p className="text-sm text-gray-400 mb-6">{jobStatus?.current_stage || 'Processing on Kaggle NVIDIA T4 GPU node...'}</p>
+                  <div className="w-full bg-studio-800 rounded-full h-3 mb-3 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-studio-accent to-cyan-400 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${jobStatus?.progress_percent ?? 5}%` }}
+                    />
+                  </div>
+                </>
+              )}
+              <p className="text-xs text-indigo-400 font-mono mt-4">Job ID: {activeJob?.job_id}</p>
             </div>
           )}
         </div>
