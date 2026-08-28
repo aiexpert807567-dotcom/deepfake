@@ -46,6 +46,11 @@ class IdentityAggregator:
         avg_embedding = np.mean(embeddings, axis=0)
         avg_embedding = avg_embedding / (np.linalg.norm(avg_embedding) + 1e-8)
 
+        # inswapper reads the embedding directly off source_face.normed_embedding,
+        # so overwrite it with our multi-photo average instead of leaving it as
+        # whichever single reference photo happened to have the largest face.
+        best_face.normed_embedding = avg_embedding.astype(np.float32)
+
         return {
             "embedding": avg_embedding,
             "source_face": best_face,

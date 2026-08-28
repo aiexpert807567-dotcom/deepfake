@@ -91,15 +91,19 @@ class JobProcessor:
                     out_frame = swap_face(frame, chosen, source_face)
                     swapped_count += 1
 
-                    if job_payload.get("face_restoration", True):
+                    # NOTE: FaceRestorer is currently a placeholder unsharp-mask filter,
+                    # not real GFPGAN restoration. Sharpening a raw swap seam tends to
+                    # amplify artifacts rather than fix them, so it's disabled here until
+                    # Stage 4 wires in real GFPGAN.
+                    # if job_payload.get("face_restoration", True):
+                    #     ...
+
+                    if job_payload.get("temporal_stabilization", True):
                         x1, y1, x2, y2 = [int(v) for v in chosen.bbox]
                         x1, y1 = max(x1, 0), max(y1, 0)
                         x2, y2 = min(x2, out_frame.shape[1]), min(y2, out_frame.shape[0])
                         if x2 > x1 and y2 > y1:
-                            out_frame[y1:y2, x1:x2] = self.restorer.restore(out_frame[y1:y2, x1:x2])
-
-                    if job_payload.get("temporal_stabilization", True):
-                        out_frame = self.stabilizer.smooth_frame(out_frame)
+                            out_frame[y1:y2, x1:x2] = self.stabilizer.smooth_frame(out_frame[y1:y2, x1:x2])
                 else:
                     out_frame = frame
 
