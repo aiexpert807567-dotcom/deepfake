@@ -108,18 +108,17 @@ export default function GenerateStudioPage() {
   };
 
   return (
-    <div className="flex bg-studio-950 text-gray-100 min-h-screen">
+    <div className="flex flex-col md:flex-row bg-studio-950 text-gray-100 min-h-screen">
       <Navigation />
 
-      <main className="flex-1 p-10 overflow-y-auto">
-        {/* Wizard Header Progress Bar */}
-        <div className="max-w-4xl mx-auto mb-10">
-          <div className="flex items-center justify-between mb-4">
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 overflow-y-auto">
+        <div className="max-w-4xl mx-auto mb-6 sm:mb-10">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-3xl font-extrabold text-white tracking-tight">AI Studio Generator</h2>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">AI Studio Generator</h2>
               <p className="text-sm text-gray-400 mt-0.5">Step-by-Step Multi-Reference Face Transformation</p>
             </div>
-            <div className={`px-4 py-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${
+            <div className={`self-start sm:self-auto px-4 py-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${
               workerOnline ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700' : 'bg-rose-950/80 text-rose-300 border-rose-800'
             }`}>
               <span className={`w-2 h-2 rounded-full ${workerOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
@@ -127,8 +126,7 @@ export default function GenerateStudioPage() {
             </div>
           </div>
 
-          {/* Stepper Indicator */}
-          <div className="grid grid-cols-4 gap-2 bg-studio-900 p-2 rounded-2xl border border-studio-700/60">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-studio-900 p-2 rounded-2xl border border-studio-700/60">
             {[
               { num: 1, label: 'Upload Target' },
               { num: 2, label: 'Select Target Face' },
@@ -137,7 +135,7 @@ export default function GenerateStudioPage() {
             ].map(s => (
               <div
                 key={s.num}
-                className={`py-2 px-3 rounded-xl text-center text-xs font-semibold transition ${
+                className={`py-2 px-2 sm:px-3 rounded-xl text-center text-[11px] sm:text-xs font-semibold transition ${
                   step === s.num
                     ? 'bg-studio-accent text-white shadow-md shadow-indigo-600/30'
                     : step > s.num
@@ -152,34 +150,32 @@ export default function GenerateStudioPage() {
         </div>
 
         <div className="max-w-4xl mx-auto">
-          {/* STEP 1: Upload Target */}
           {step === 1 && (
-            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-10 text-center shadow-2xl backdrop-blur">
+            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-6 sm:p-10 text-center shadow-2xl backdrop-blur">
               <div className="w-16 h-16 rounded-2xl bg-studio-accent/20 text-studio-accent flex items-center justify-center mx-auto mb-5 border border-studio-accent/30 shadow-lg">
                 <Upload className="w-8 h-8" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Upload Target Media</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Upload Target Media</h3>
               <p className="text-sm text-gray-400 max-w-md mx-auto mb-8">
                 Upload the video (up to 30s) or image containing the face you wish to transform. Other people in the scene will remain unchanged.
               </p>
 
-              <label className="bg-gradient-to-r from-studio-accent to-indigo-600 hover:from-indigo-500 hover:to-indigo-600 text-white px-8 py-4 rounded-xl cursor-pointer font-semibold shadow-xl shadow-indigo-500/25 transition transform hover:-translate-y-0.5 inline-flex items-center gap-3">
-                {isUploading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Film className="w-5 h-5" />}
-                {isUploading ? 'Analyzing Video & Detecting Faces...' : 'Select Target Video or Image'}
+              <label className="w-full sm:w-auto justify-center bg-gradient-to-r from-studio-accent to-indigo-600 hover:from-indigo-500 hover:to-indigo-600 text-white px-6 sm:px-8 py-4 rounded-xl cursor-pointer font-semibold shadow-xl shadow-indigo-500/25 transition transform hover:-translate-y-0.5 inline-flex items-center gap-3">
+                {isUploading ? <RefreshCw className="w-5 h-5 animate-spin shrink-0" /> : <Film className="w-5 h-5 shrink-0" />}
+                <span className="text-sm sm:text-base">{isUploading ? 'Analyzing Video & Detecting Faces...' : 'Select Target Video or Image'}</span>
                 <input type="file" onChange={handleTargetUpload} className="hidden" accept="image/*,video/*" />
               </label>
             </div>
           )}
 
-          {/* STEP 2: Select Target Face */}
           {step === 2 && (
-            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-8 shadow-2xl">
-              <h3 className="text-xl font-bold text-white mb-2">Step 2: Select Exact Target Face</h3>
+            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-5 sm:p-8 shadow-2xl">
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Step 2: Select Exact Target Face</h3>
               <p className="text-sm text-gray-400 mb-6">
                 Multiple faces detected. Select strictly <strong className="text-white">one</strong> face. Other people will stay completely untouched.
               </p>
 
-              <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                 {detectedFaces.map(face => (
                   <div
                     key={face.id}
@@ -215,7 +211,7 @@ export default function GenerateStudioPage() {
                 <button
                   disabled={!selectedFaceId}
                   onClick={() => setStep(3)}
-                  className="bg-studio-accent hover:bg-indigo-600 disabled:opacity-50 text-white px-7 py-3 rounded-xl font-semibold transition"
+                  className="bg-studio-accent hover:bg-indigo-600 disabled:opacity-50 text-white px-5 sm:px-7 py-3 rounded-xl font-semibold transition text-sm sm:text-base"
                 >
                   Confirm Face & Continue
                 </button>
@@ -223,27 +219,26 @@ export default function GenerateStudioPage() {
             </div>
           )}
 
-          {/* STEP 3: Multi-Reference Upload */}
           {step === 3 && (
-            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-8 shadow-2xl">
-              <h3 className="text-xl font-bold text-white mb-2">Step 3: Reference Photos (3–8 Recommended)</h3>
+            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-5 sm:p-8 shadow-2xl">
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Step 3: Reference Photos (3–8 Recommended)</h3>
               <p className="text-sm text-gray-400 mb-6">
                 Upload clear photos of the new identity (Front, 3/4 angles, profile) for best multi-angle consistency.
               </p>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {references.map((ref, idx) => (
-                  <div key={idx} className="p-4 bg-studio-800/80 rounded-xl border border-studio-700 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-white">{ref.filename}</p>
+                  <div key={idx} className="p-4 bg-studio-800/80 rounded-xl border border-studio-700 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{ref.filename}</p>
                       <p className="text-xs text-emerald-400 font-mono">Score: {ref.analysis.quality_score}% • {ref.analysis.estimated_angle}</p>
                     </div>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                   </div>
                 ))}
               </div>
 
-              <label className="bg-studio-800 hover:bg-studio-750 text-gray-200 border border-studio-700 px-5 py-3 rounded-xl cursor-pointer text-sm font-semibold transition inline-flex items-center gap-2 mb-8">
+              <label className="w-full sm:w-auto justify-center bg-studio-800 hover:bg-studio-750 text-gray-200 border border-studio-700 px-5 py-3 rounded-xl cursor-pointer text-sm font-semibold transition inline-flex items-center gap-2 mb-8">
                 + Upload Reference Photos
                 <input type="file" multiple onChange={handleReferenceUpload} className="hidden" accept="image/*" />
               </label>
@@ -252,7 +247,7 @@ export default function GenerateStudioPage() {
                 <button onClick={() => setStep(2)} className="text-sm text-gray-400 hover:text-white">Back</button>
                 <button
                   onClick={() => setStep(4)}
-                  className="bg-studio-accent hover:bg-indigo-600 text-white px-7 py-3 rounded-xl font-semibold transition"
+                  className="bg-studio-accent hover:bg-indigo-600 text-white px-5 sm:px-7 py-3 rounded-xl font-semibold transition text-sm sm:text-base"
                 >
                   Proceed to Settings
                 </button>
@@ -260,40 +255,38 @@ export default function GenerateStudioPage() {
             </div>
           )}
 
-          {/* STEP 4: Review Settings */}
           {step === 4 && (
-            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-8 shadow-2xl">
-              <h3 className="text-xl font-bold text-white mb-4">Step 4: Quality & Pipeline Settings</h3>
+            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-5 sm:p-8 shadow-2xl">
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-4">Step 4: Quality & Pipeline Settings</h3>
 
-              <div className="space-y-3 bg-studio-850 p-6 rounded-2xl border border-studio-700/60 mb-8 text-sm">
-                <div className="flex justify-between py-1 border-b border-studio-800"><span>Quality Preset:</span><span className="font-bold text-white">Maximum (Quality &gt; Speed)</span></div>
-                <div className="flex justify-between py-1 border-b border-studio-800"><span>GFPGAN Face Detail Restoration:</span><span className="font-semibold text-emerald-400">ENABLED</span></div>
-                <div className="flex justify-between py-1 border-b border-studio-800"><span>Temporal Stabilization (EMA Filter):</span><span className="font-semibold text-emerald-400">ENABLED</span></div>
-                <div className="flex justify-between py-1 border-b border-studio-800"><span>Reinhard LAB Color & Lighting Matching:</span><span className="font-semibold text-emerald-400">ENABLED</span></div>
-                <div className="flex justify-between py-1"><span>FFmpeg Audio Track Sync:</span><span className="font-semibold text-emerald-400">ENABLED</span></div>
+              <div className="space-y-3 bg-studio-850 p-5 sm:p-6 rounded-2xl border border-studio-700/60 mb-8 text-sm">
+                <div className="flex justify-between py-1 border-b border-studio-800 gap-2"><span>Quality Preset:</span><span className="font-bold text-white text-right">Maximum (Quality &gt; Speed)</span></div>
+                <div className="flex justify-between py-1 border-b border-studio-800 gap-2"><span>GFPGAN Face Detail Restoration:</span><span className="font-semibold text-emerald-400 shrink-0">ENABLED</span></div>
+                <div className="flex justify-between py-1 border-b border-studio-800 gap-2"><span>Temporal Stabilization (EMA Filter):</span><span className="font-semibold text-emerald-400 shrink-0">ENABLED</span></div>
+                <div className="flex justify-between py-1 border-b border-studio-800 gap-2"><span>Reinhard LAB Color & Lighting Matching:</span><span className="font-semibold text-emerald-400 shrink-0">ENABLED</span></div>
+                <div className="flex justify-between py-1 gap-2"><span>FFmpeg Audio Track Sync:</span><span className="font-semibold text-emerald-400 shrink-0">ENABLED</span></div>
               </div>
 
               <button
                 onClick={handleStartGeneration}
-                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-studio-accent to-indigo-600 hover:from-indigo-500 hover:to-indigo-600 text-white py-4 rounded-xl font-bold shadow-xl shadow-indigo-500/25 transition text-base"
+                className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-studio-accent to-indigo-600 hover:from-indigo-500 hover:to-indigo-600 text-white py-4 rounded-xl font-bold shadow-xl shadow-indigo-500/25 transition text-sm sm:text-base"
               >
                 <Sparkles className="w-5 h-5" /> Start GPU Transformation
               </button>
             </div>
           )}
 
-          {/* STEP 5: Active Processing Monitor */}
           {step === 5 && (
-            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-10 text-center shadow-2xl">
+            <div className="bg-studio-900/90 border border-studio-700/70 rounded-3xl p-6 sm:p-10 text-center shadow-2xl">
               {jobStatus?.status === 'COMPLETED' ? (
                 <>
                   <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 className="w-9 h-9" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Transformation Complete</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Transformation Complete</h3>
                   <p className="text-sm text-gray-400 mb-6">Your result is ready.</p>
                   {jobStatus.result_url && (
-                    <a
+                    
                       href={`${apiClient.defaults.baseURL}${jobStatus.result_url}`}
                       target="_blank"
                       rel="noreferrer"
@@ -308,13 +301,13 @@ export default function GenerateStudioPage() {
                   <div className="w-16 h-16 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-6">
                     <AlertCircle className="w-9 h-9" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Transformation Failed</h3>
-                  <p className="text-sm text-rose-400 mb-6">{jobStatus.error_message || 'An unknown error occurred.'}</p>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Transformation Failed</h3>
+                  <p className="text-sm text-rose-400 mb-6 break-words">{jobStatus.error_message || 'An unknown error occurred.'}</p>
                 </>
               ) : (
                 <>
                   <div className="animate-spin w-14 h-14 border-4 border-studio-accent border-t-transparent rounded-full mx-auto mb-6 shadow-lg" />
-                  <h3 className="text-2xl font-bold text-white mb-2">GPU Transformation in Progress</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">GPU Transformation in Progress</h3>
                   <p className="text-sm text-gray-400 mb-6">{jobStatus?.current_stage || 'Processing on Kaggle NVIDIA T4 GPU node...'}</p>
                   <div className="w-full bg-studio-800 rounded-full h-3 mb-3 overflow-hidden">
                     <div
@@ -324,7 +317,7 @@ export default function GenerateStudioPage() {
                   </div>
                 </>
               )}
-              <p className="text-xs text-indigo-400 font-mono mt-4">Job ID: {activeJob?.job_id}</p>
+              <p className="text-xs text-indigo-400 font-mono mt-4 break-all">Job ID: {activeJob?.job_id}</p>
             </div>
           )}
         </div>

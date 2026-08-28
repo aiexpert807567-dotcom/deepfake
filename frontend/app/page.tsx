@@ -20,33 +20,32 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex bg-studio-950 text-gray-100 min-h-screen overflow-x-hidden font-sans">
+    <div className="flex flex-col md:flex-row bg-studio-950 text-gray-100 min-h-screen overflow-x-hidden font-sans">
       <Navigation />
 
-      <main className="flex-1 p-10 overflow-y-auto">
-        {/* Top Header Banner */}
-        <div className="relative rounded-3xl bg-gradient-to-r from-studio-900 via-studio-850 to-indigo-950/40 border border-studio-700/60 p-8 mb-10 overflow-hidden shadow-2xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 overflow-y-auto">
+        <div className="relative rounded-3xl bg-gradient-to-r from-studio-900 via-studio-850 to-indigo-950/40 border border-studio-700/60 p-6 sm:p-8 mb-8 sm:mb-10 overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-studio-accent/15 border border-studio-accent/30 text-xs font-semibold text-indigo-300 mb-4">
               <Zap className="w-3.5 h-3.5 text-studio-accent" /> Zero-Cost Distributed Neural Studio
             </div>
-            <h2 className="text-3xl font-extrabold text-white tracking-tight sm:text-4xl mb-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight sm:text-4xl mb-3">
               Transform Media with <span className="bg-gradient-to-r from-indigo-400 via-studio-cyan to-cyan-300 bg-clip-text text-transparent">Multi-Reference Precision</span>
             </h2>
             <p className="text-gray-400 text-sm leading-relaxed mb-6">
               Full consent-based video and image identity transformation. Powered by temporal ArcFace aggregation, Reinhard LAB color adaptation, and GFPGAN face restoration.
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <Link
                 href="/generate"
-                className="flex items-center gap-2.5 bg-gradient-to-r from-studio-accent to-indigo-600 hover:from-indigo-500 hover:to-indigo-600 text-white px-6 py-3.5 rounded-xl font-semibold shadow-lg shadow-indigo-500/25 transition transform hover:-translate-y-0.5"
+                className="flex items-center justify-center gap-2.5 bg-gradient-to-r from-studio-accent to-indigo-600 hover:from-indigo-500 hover:to-indigo-600 text-white px-6 py-3.5 rounded-xl font-semibold shadow-lg shadow-indigo-500/25 transition transform hover:-translate-y-0.5"
               >
                 <Wand2 className="w-4 h-4" /> Launch Studio Pipeline <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
                 href="/worker"
-                className="flex items-center gap-2 bg-studio-800/80 hover:bg-studio-750 text-gray-200 border border-studio-700 px-5 py-3.5 rounded-xl font-medium text-sm transition"
+                className="flex items-center justify-center gap-2 bg-studio-800/80 hover:bg-studio-750 text-gray-200 border border-studio-700 px-5 py-3.5 rounded-xl font-medium text-sm transition"
               >
                 <Cpu className="w-4 h-4 text-studio-cyan" /> Worker Telemetry
               </Link>
@@ -54,8 +53,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Real-time Telemetry Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-8 sm:mb-10">
           <div className="p-5 rounded-2xl bg-studio-900/80 border border-studio-700/60 backdrop-blur">
             <div className="flex items-center justify-between text-gray-400 text-xs font-medium mb-3">
               <span>GPU Session Status</span>
@@ -95,11 +93,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Feature Highlights Grid */}
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-studio-accent" /> Studio Pipeline Capabilities
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
           <div className="p-6 rounded-2xl bg-studio-900/60 border border-studio-700/50 hover:border-studio-accent/40 transition">
             <div className="w-10 h-10 rounded-xl bg-indigo-950 text-indigo-400 flex items-center justify-center mb-4 border border-indigo-800/40">
               <CheckCircle2 className="w-5 h-5" />

@@ -2,13 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sparkles, LayoutDashboard, Wand2, History, Cpu, Activity, ShieldCheck, Power } from 'lucide-react';
+import { Sparkles, LayoutDashboard, Wand2, History, Cpu, Activity, ShieldCheck, Power, Menu, X } from 'lucide-react';
 import { apiClient } from '../lib/api';
 
 export default function Navigation() {
   const pathname = usePathname();
   const [worker, setWorker] = useState<any>({ online: false, enabled: true, status: 'OFFLINE', gpu_name: 'Scanning...' });
   const [isToggling, setIsToggling] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const fetchStatus = async () => {
     try {
@@ -24,6 +25,10 @@ export default function Navigation() {
     const interval = setInterval(fetchStatus, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const toggleWorker = async () => {
     if (isToggling) return;
@@ -48,8 +53,8 @@ export default function Navigation() {
 
   const enabled = worker.enabled !== false;
 
-  return (
-    <aside className="w-72 bg-studio-900/90 backdrop-blur-2xl border-r border-studio-700/60 flex flex-col justify-between p-5 min-h-screen z-30 select-none">
+  const sidebarBody = (
+    <>
       <div>
         <div className="flex items-center gap-3.5 px-2 py-3 mb-8">
           <div className="relative">
@@ -76,6 +81,39 @@ export default function Navigation() {
         </div>
         <p className="text-[11px] text-center text-gray-500">Kaggle Free GPU Session • $0 Cost</p>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      <div className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 bg-studio-900/95 backdrop-blur-2xl border-b border-studio-700/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 via-studio-accent to-cyan-400 flex items-center justify-center"><Sparkles className="w-4 h-4 text-white" /></div>
+          <span className="font-bold text-white text-sm">AI Face Studio</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`w-2.5 h-2.5 rounded-full ${worker.online ? 'bg-emerald-400 animate-pulse' : enabled ? 'bg-amber-400' : 'bg-rose-500'}`} />
+          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-gray-300 hover:bg-studio-800" aria-label="Open menu">
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="w-72 max-w-[85vw] bg-studio-900 border-r border-studio-700/60 flex flex-col justify-between p-5 h-full overflow-y-auto">
+            <button onClick={() => setMobileOpen(false)} className="self-end p-2 -mt-2 -mr-2 mb-2 text-gray-400 hover:text-white" aria-label="Close menu">
+              <X className="w-5 h-5" />
+            </button>
+            {sidebarBody}
+          </div>
+          <div className="flex-1 bg-black/60" onClick={() => setMobileOpen(false)} />
+        </div>
+      )}
+
+      <aside className="hidden md:flex w-72 bg-studio-900/90 backdrop-blur-2xl border-r border-studio-700/60 flex-col justify-between p-5 min-h-screen z-30 select-none shrink-0">
+        {sidebarBody}
+      </aside>
+    </>
   );
 }
