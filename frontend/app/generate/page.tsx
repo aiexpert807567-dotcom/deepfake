@@ -286,7 +286,7 @@ export default function GenerateStudioPage() {
                   <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Transformation Complete</h3>
                   <p className="text-sm text-gray-400 mb-6">Your result is ready.</p>
                   {jobStatus.result_url && (
-                    
+                    <a
                       href={`${apiClient.defaults.baseURL}${jobStatus.result_url}`}
                       target="_blank"
                       rel="noreferrer"
