@@ -103,7 +103,14 @@ class JobProcessor:
                         x1, y1 = max(x1, 0), max(y1, 0)
                         x2, y2 = min(x2, out_frame.shape[1]), min(y2, out_frame.shape[0])
                         if x2 > x1 and y2 > y1:
-                            out_frame[y1:y2, x1:x2] = self.stabilizer.smooth_frame(out_frame[y1:y2, x1:x2])
+                            crop = out_frame[y1:y2, x1:x2]
+                            orig_h, orig_w = crop.shape[:2]
+                            # Face bbox size drifts by a pixel or two between frames,
+                            # so normalize to a fixed size before blending with the
+                            # previous frame's crop, then resize back to fit exactly.
+                            fixed = cv2.resize(crop, (256, 256))
+                            stabilized = self.stabilizer.smooth_frame(fixed)
+                            out_frame[y1:y2, x1:x2] = cv2.resize(stabilized, (orig_w, orig_h))
                 else:
                     out_frame = frame
 
