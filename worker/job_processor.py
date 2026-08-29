@@ -98,14 +98,15 @@ class JobProcessor:
                     # if job_payload.get("face_restoration", True):
                     #     ...
 
-                    # NOTE: naive crop-blend stabilization caused ghosting/blockiness
-                    # because it blends the previous frame's face crop with the current
-                    # one without accounting for the face actually moving between frames,
-                    # plus a hard rectangular edge from the un-feathered overwrite.
-                    # Disabled for now — inswapper's own paste_back=True already does
-                    # proper masked blending into the frame. Real stabilization needs
-                    # landmark-based alignment before blending; that's future work.
-                    pass
+                    if job_payload.get("face_restoration", True):
+                        x1, y1, x2, y2 = [int(v) for v in chosen.bbox]
+                        x1, y1 = max(x1, 0), max(y1, 0)
+                        x2, y2 = min(x2, out_frame.shape[1]), min(y2, out_frame.shape[0])
+                        if x2 > x1 and y2 > y1:
+                            out_frame[y1:y2, x1:x2] = self.restorer.restore(out_frame[y1:y2, x1:x2])
+                    # Stabilization intentionally left disabled — naive crop-blend
+                    # caused ghosting/blockiness. Real stabilization needs landmark
+                    # -based alignment before blending; that's future work.
                 else:
                     out_frame = frame
 
