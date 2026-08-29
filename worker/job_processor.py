@@ -98,19 +98,14 @@ class JobProcessor:
                     # if job_payload.get("face_restoration", True):
                     #     ...
 
-                    if job_payload.get("temporal_stabilization", True):
-                        x1, y1, x2, y2 = [int(v) for v in chosen.bbox]
-                        x1, y1 = max(x1, 0), max(y1, 0)
-                        x2, y2 = min(x2, out_frame.shape[1]), min(y2, out_frame.shape[0])
-                        if x2 > x1 and y2 > y1:
-                            crop = out_frame[y1:y2, x1:x2]
-                            orig_h, orig_w = crop.shape[:2]
-                            # Face bbox size drifts by a pixel or two between frames,
-                            # so normalize to a fixed size before blending with the
-                            # previous frame's crop, then resize back to fit exactly.
-                            fixed = cv2.resize(crop, (256, 256))
-                            stabilized = self.stabilizer.smooth_frame(fixed)
-                            out_frame[y1:y2, x1:x2] = cv2.resize(stabilized, (orig_w, orig_h))
+                    # NOTE: naive crop-blend stabilization caused ghosting/blockiness
+                    # because it blends the previous frame's face crop with the current
+                    # one without accounting for the face actually moving between frames,
+                    # plus a hard rectangular edge from the un-feathered overwrite.
+                    # Disabled for now — inswapper's own paste_back=True already does
+                    # proper masked blending into the frame. Real stabilization needs
+                    # landmark-based alignment before blending; that's future work.
+                    pass
                 else:
                     out_frame = frame
 
