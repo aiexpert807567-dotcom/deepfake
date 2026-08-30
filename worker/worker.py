@@ -83,6 +83,9 @@ def run_worker_loop():
                     target_path.unlink(missing_ok=True)
                     for ref in reference_files:
                         ref.unlink(missing_ok=True)
+
+                print("[Worker] Job finished. Exiting after single job (auto-shutdown mode).")
+                sys.exit(0)
             time.sleep(3)
         except Exception as exc:
             print(f"[Worker Error]: {exc}")
