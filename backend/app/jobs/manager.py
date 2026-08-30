@@ -44,7 +44,7 @@ class JobManager:
                 return j
         return None
 
-    def update_job_status(self, job_id: str, status: JobStatus, stage: str, progress: float, error: str = None, result_url: str = None):
+    def update_job_status(self, job_id: str, status: JobStatus, stage: str, progress: float, error: str = None, result_url: str = None, warning: str = None):
         if job_id in self.jobs:
             self.jobs[job_id]["status"] = status
             self.jobs[job_id]["current_stage"] = stage
@@ -54,5 +54,7 @@ class JobManager:
                 self.jobs[job_id]["error_message"] = error
             if result_url:
                 self.jobs[job_id]["result_url"] = result_url
+            if warning and warning not in self.jobs[job_id]["warnings"]:
+                self.jobs[job_id]["warnings"].append(warning)
 
 job_manager = JobManager()

@@ -30,7 +30,7 @@ class JobProcessor:
         source_face = identity["source_face"]
         identity_msg = f"Used {identity['num_references_used']}/{len(ref_images)} reference photos for identity"
         print(f"[Identity] {identity_msg}")
-        progress_cb(12.0, "ANALYZING", identity_msg)
+        progress_cb(12.0, "ANALYZING", identity_msg, warning=identity_msg)
 
         if media_type == "image":
             progress_cb(30.0, "PROCESSING", "Applying face transformation")
@@ -119,7 +119,9 @@ class JobProcessor:
                     progress_cb(min(pct, 80.0), "PROCESSING", f"Swapping frame {frame_idx}/{total_frames}")
 
             cap.release()
-            print(f"[JobProcessor] Swapped face in {swapped_count}/{frame_idx} frames")
+            swap_msg = f"Swapped face in {swapped_count}/{frame_idx} frames"
+            print(f"[JobProcessor] {swap_msg}")
+            progress_cb(82.0, "ENCODING", swap_msg, warning=swap_msg)
 
             progress_cb(85.0, "ENCODING", "Multiplexing H.264 video with original audio")
             final_mp4 = out_dir / "result.mp4"

@@ -44,9 +44,12 @@ def run_worker_loop():
                 payload = job["payload"]
                 print(f"[Worker] Processing Job: {job_id}")
 
-                def progress_callback(prog, stage, msg):
+                def progress_callback(prog, stage, msg, warning=None):
                     try:
-                        session.post(f"{API_URL}/api/worker/update-progress", data={"job_id": job_id, "status": stage, "stage": msg, "progress": prog}, timeout=10)
+                        data = {"job_id": job_id, "status": stage, "stage": msg, "progress": prog}
+                        if warning:
+                            data["warning"] = warning
+                        session.post(f"{API_URL}/api/worker/update-progress", data=data, timeout=10)
                     except Exception as exc:
                         print(f"[Worker] Progress update failed: {exc}")
 

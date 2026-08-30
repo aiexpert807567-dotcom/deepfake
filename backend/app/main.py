@@ -171,8 +171,8 @@ async def worker_download_media(media_id: str, authorized: bool = Depends(verify
     return FileResponse(str(path), filename=path.name)
 
 @app.post("/api/worker/update-progress")
-async def worker_progress(job_id: str = Form(...), status: JobStatus = Form(...), stage: str = Form(...), progress: float = Form(...), error: str = Form(None), authorized: bool = Depends(verify_worker_token)):
-    job_manager.update_job_status(job_id, status, stage, progress, error)
+async def worker_progress(job_id: str = Form(...), status: JobStatus = Form(...), stage: str = Form(...), progress: float = Form(...), error: str = Form(None), warning: str = Form(None), authorized: bool = Depends(verify_worker_token)):
+    job_manager.update_job_status(job_id, status, stage, progress, error, warning=warning)
     return {"status": "OK"}
 
 @app.post("/api/worker/upload-result")
