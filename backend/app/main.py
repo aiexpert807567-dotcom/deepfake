@@ -30,44 +30,7 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
-@app.get("/debug/cv2")
-async def debug_cv2():
-    try:
-        import cv2
-        info = {
-            "cv2_version": getattr(cv2, "__version__", None),
-            "has_CascadeClassifier": hasattr(cv2, "CascadeClassifier"),
-            "has_data": hasattr(cv2, "data"),
-            "has_dnn_readNetFromCaffe": hasattr(cv2.dnn, "readNetFromCaffe") if hasattr(cv2, "dnn") else False,
-            "has_dnn_readNetFromONNX": hasattr(cv2.dnn, "readNetFromONNX") if hasattr(cv2, "dnn") else False,
-            "has_FaceDetectorYN": hasattr(cv2, "FaceDetectorYN") or hasattr(cv2, "FaceDetectorYN_create"),
-        }
-        try:
-            info["data_haarcascades"] = cv2.data.haarcascades
-            import os
-            info["haarcascades_dir_exists"] = os.path.isdir(cv2.data.haarcascades)
-            if info["haarcascades_dir_exists"]:
-                info["haarcascade_files_sample"] = os.listdir(cv2.data.haarcascades)[:5]
-        except Exception as exc:
-            info["data_error"] = str(exc)
-        return info
-    except Exception as exc:
-        return {"import_error": str(exc)}
 
-@app.get("/debug/kaggle-kernel")
-async def debug_kaggle_kernel():
-    import os
-    from pathlib import Path
-    kernel_dir = Path(__file__).resolve().parent.parent / "kaggle_kernel"
-    info = {
-        "computed_path": str(kernel_dir),
-        "exists": kernel_dir.exists(),
-        "cwd": os.getcwd(),
-        "app_dir_contents": os.listdir("/app") if os.path.isdir("/app") else "no /app dir",
-    }
-    if kernel_dir.exists():
-        info["kernel_dir_contents"] = os.listdir(kernel_dir)
-    return info
 
 @app.get("/health")
 async def health():
