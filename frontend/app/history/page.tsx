@@ -65,6 +65,13 @@ export default function HistoryPage() {
                   <p className="text-sm text-gray-300 mt-2">{job.current_stage}</p>
                   <p className="text-xs text-gray-500 mt-1">{job.target_media_type} • {job.duration_sec ? `${job.duration_sec.toFixed(1)}s` : '—'} • {new Date(job.created_at).toLocaleString()}</p>
                   {job.error_message && <p className="text-xs text-rose-400 mt-2 break-words">{job.error_message}</p>}
+                  {job.warnings && job.warnings.length > 0 && (
+                    <ul className="mt-2 space-y-0.5">
+                      {job.warnings.map((w: string, i: number) => (
+                        <li key={i} className="text-xs text-indigo-300 break-words">• {w}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="shrink-0 self-start sm:self-center">
                   {job.status === 'COMPLETED' && job.result_url && (
