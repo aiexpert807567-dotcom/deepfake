@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-KERNEL_DIR = Path(__file__).resolve().parent.parent.parent.parent / "kaggle_kernel"
+KERNEL_DIR = Path(__file__).resolve().parent.parent.parent / "kaggle_kernel"
 
 def trigger_kaggle_run() -> dict:
     """
