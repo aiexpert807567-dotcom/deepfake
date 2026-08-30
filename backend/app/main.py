@@ -54,6 +54,21 @@ async def debug_cv2():
     except Exception as exc:
         return {"import_error": str(exc)}
 
+@app.get("/debug/kaggle-kernel")
+async def debug_kaggle_kernel():
+    import os
+    from pathlib import Path
+    kernel_dir = Path(__file__).resolve().parent.parent / "kaggle_kernel"
+    info = {
+        "computed_path": str(kernel_dir),
+        "exists": kernel_dir.exists(),
+        "cwd": os.getcwd(),
+        "app_dir_contents": os.listdir("/app") if os.path.isdir("/app") else "no /app dir",
+    }
+    if kernel_dir.exists():
+        info["kernel_dir_contents"] = os.listdir(kernel_dir)
+    return info
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "ai-face-studio-backend", "version": "1.2.0"}
