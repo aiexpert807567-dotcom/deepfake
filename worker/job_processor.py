@@ -28,7 +28,9 @@ class JobProcessor:
         if identity is None:
             raise ValueError("Could not build an identity from the uploaded reference photos")
         source_face = identity["source_face"]
-        print(f"[Identity] Built embedding from {identity['num_references_used']}/{len(ref_images)} reference photos")
+        identity_msg = f"Used {identity['num_references_used']}/{len(ref_images)} reference photos for identity"
+        print(f"[Identity] {identity_msg}")
+        progress_cb(12.0, "ANALYZING", identity_msg)
 
         if media_type == "image":
             progress_cb(30.0, "PROCESSING", "Applying face transformation")
