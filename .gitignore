@@ -29,3 +29,9 @@ models/checkpoints/*.onnx
 models_cache/*
 temp/
 *.zip
+
+# Model weights — downloaded at runtime, never committed (too large for git)
+worker/models/
+worker/gfpgan/
+*.onnx
+*.pth

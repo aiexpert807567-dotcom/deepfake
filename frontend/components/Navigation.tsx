@@ -10,6 +10,7 @@ export default function Navigation() {
   const [worker, setWorker] = useState<any>({ online: false, enabled: true, status: 'OFFLINE', gpu_name: 'Scanning...' });
   const [isToggling, setIsToggling] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [usage, setUsage] = useState<any>(null);
 
   const fetchStatus = async () => {
     try {
@@ -23,6 +24,18 @@ export default function Navigation() {
   useEffect(() => {
     fetchStatus();
     const interval = setInterval(fetchStatus, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const fetchUsage = async () => {
+      try {
+        const res = await apiClient.get('/api/worker/usage');
+        setUsage(res.data);
+      } catch {}
+    };
+    fetchUsage();
+    const interval = setInterval(fetchUsage, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -79,6 +92,21 @@ export default function Navigation() {
             <div className="flex items-center justify-between text-xs"><span className="text-gray-400">VRAM Allocation:</span><span className="text-indigo-400 font-mono text-[11px]">{worker.vram_total_mb ? `${worker.vram_total_mb} MB` : worker.online ? '15,360 MB' : '0 MB'}</span></div>
           </div>
         </div>
+        {usage && (
+          <div className="px-1 space-y-1">
+            <div className="flex items-center justify-between text-[11px] text-gray-400">
+              <span>GPU hours left (est.)</span>
+              <span className="font-mono text-indigo-300">{usage.hours_remaining_estimate}h / {usage.weekly_quota_hours}h</span>
+            </div>
+            <div className="w-full bg-studio-800 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-emerald-500 to-cyan-400 h-full rounded-full"
+                style={{ width: `${Math.min((usage.hours_remaining_estimate / usage.weekly_quota_hours) * 100, 100)}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-gray-500">Resets {new Date(usage.resets_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+          </div>
+        )}
         <p className="text-[11px] text-center text-gray-500">Kaggle Free GPU Session • $0 Cost</p>
       </div>
     </>

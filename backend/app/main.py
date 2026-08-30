@@ -10,6 +10,8 @@ from app.auth.security import create_access_token, verify_token, verify_worker_t
 from app.models.schemas import JobCreateRequest, JobResponse, JobStatus, WorkerHeartbeat, WorkerPowerRequest
 from app.jobs.manager import job_manager
 from app.workers.manager import worker_manager
+from app.workers.kaggle_trigger import trigger_kaggle_run
+from app.workers.usage_tracker import start_session, stop_session, get_usage
 from app.storage.local_storage import storage
 from app.utils.media import analyze_media_file, assess_reference_quality
 from app.utils.face_detection import detect_faces_in_media
@@ -143,7 +145,19 @@ async def worker_power(req: WorkerPowerRequest):
     if not req.enabled and job_manager.get_active_job():
         raise HTTPException(status_code=409, detail="Cannot turn off GPU while a job is processing. Wait for completion or stop the active job first.")
     worker_manager.set_power(req.enabled)
+    if req.enabled:
+        start_session()
+        try:
+            trigger_kaggle_run()
+        except Exception as exc:
+            print(f"[Kaggle Trigger] Failed to start Kaggle kernel: {exc}")
+    else:
+        stop_session()
     return worker_manager.get_status()
+
+@app.get("/api/worker/usage")
+async def worker_usage():
+    return get_usage()
 
 @app.get("/api/worker/power-status")
 async def worker_power_status(authorized: bool = Depends(verify_worker_token)):
