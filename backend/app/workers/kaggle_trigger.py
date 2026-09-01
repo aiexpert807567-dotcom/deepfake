@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from pathlib import Path
 
 KERNEL_DIR = Path(__file__).resolve().parent.parent.parent / "kaggle_kernel"
@@ -23,11 +24,7 @@ def _force_kaggle_resources_enabled() -> None:
 
 
 def trigger_kaggle_run() -> dict:
-    """
-    Starts a fresh Kaggle execution with BOTH GPU and Internet enabled.
-    The resource flags are enforced immediately before kernels_push so a
-    future config change cannot accidentally start an offline CPU session.
-    """
+    """Start a Kaggle execution with GPU + Internet, tolerating transient JSON API errors."""
     if not os.getenv("KAGGLE_USERNAME") or not os.getenv("KAGGLE_KEY"):
         raise RuntimeError("KAGGLE_USERNAME / KAGGLE_KEY not configured on this backend")
 
@@ -40,11 +37,28 @@ def trigger_kaggle_run() -> dict:
 
     api = KaggleApi()
     api.authenticate()
-    result = api.kernels_push(str(KERNEL_DIR))
-    return {
-        "triggered": True,
-        "gpu_enabled": True,
-        "internet_enabled": True,
-        "machine_shape": "NvidiaTeslaT4",
-        "result": str(result),
-    }
+
+    last_error = None
+    for attempt in range(1, 4):
+        try:
+            result = api.kernels_push(str(KERNEL_DIR))
+            return {
+                "triggered": True,
+                "gpu_enabled": True,
+                "internet_enabled": True,
+                "machine_shape": "NvidiaTeslaT4",
+                "attempt": attempt,
+                "result": str(result),
+            }
+        except json.JSONDecodeError as exc:
+            last_error = exc
+            print(f"[Kaggle Trigger] JSON response error on attempt {attempt}/3: {exc}")
+            if attempt < 3:
+                time.sleep(3 * attempt)
+                continue
+            raise RuntimeError(
+                "Kaggle returned an invalid JSON response after 3 startup attempts. "
+                "This is a Kaggle API/server response problem, not a GPU configuration problem."
+            ) from last_error
+
+    raise RuntimeError("Kaggle GPU startup failed")
