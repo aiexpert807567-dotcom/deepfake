@@ -52,8 +52,29 @@ class JobProcessor:
                 target_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
 
             swapped = swap_face(tgt, target_face, source_face)
+
+            # Match the source/target appearance before restoration. This reduces
+            # obvious color/skin-tone discontinuities around the swapped region.
+            if job_payload.get("color_matching", True):
+                try:
+                    swapped = match_color_reinhard(tgt, swapped, target_face.bbox)
+                except Exception as exc:
+                    print(f"[ColorMatch] skipped: {exc}")
+
+            # Feather the face boundary so the swap blends into the target naturally.
+            try:
+                mask = generate_feathered_occlusion_mask(swapped.shape, target_face.bbox)
+                if mask is not None and mask.shape[:2] == swapped.shape[:2]:
+                    alpha = np.clip(mask.astype(np.float32), 0.0, 1.0)
+                    if alpha.ndim == 2:
+                        alpha = alpha[..., None]
+                    swapped = (swapped.astype(np.float32) * alpha + tgt.astype(np.float32) * (1.0 - alpha)).clip(0, 255).astype(np.uint8)
+            except Exception as exc:
+                print(f"[Blend] skipped: {exc}")
+
             if job_payload.get("face_restoration", True):
                 swapped = self.restorer.restore(swapped)
+
             res_path = out_dir / "result.png"
             cv2.imwrite(str(res_path), swapped)
             progress_cb(100.0, "COMPLETED", "Image Transformation Complete")
@@ -104,22 +125,15 @@ class JobProcessor:
                     out_frame = swap_face(frame, chosen, source_face)
                     swapped_count += 1
 
-                    # NOTE: FaceRestorer is currently a placeholder unsharp-mask filter,
-                    # not real GFPGAN restoration. Sharpening a raw swap seam tends to
-                    # amplify artifacts rather than fix them, so it's disabled here until
-                    # Stage 4 wires in real GFPGAN.
-                    # if job_payload.get("face_restoration", True):
-                    #     ...
-
+                    # NOTE: restoration is applied only to the detected face crop.
                     if job_payload.get("face_restoration", True):
                         x1, y1, x2, y2 = [int(v) for v in chosen.bbox]
                         x1, y1 = max(x1, 0), max(y1, 0)
                         x2, y2 = min(x2, out_frame.shape[1]), min(y2, out_frame.shape[0])
                         if x2 > x1 and y2 > y1:
                             out_frame[y1:y2, x1:x2] = self.restorer.restore(out_frame[y1:y2, x1:x2])
-                    # Stabilization intentionally left disabled — naive crop-blend
-                    # caused ghosting/blockiness. Real stabilization needs landmark
-                    # -based alignment before blending; that's future work.
+                    if job_payload.get("temporal_stabilization", False):
+                        out_frame = self.stabilizer.smooth_frame(out_frame)
                 else:
                     out_frame = frame
 
