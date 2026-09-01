@@ -3,8 +3,6 @@ import cv2
 import tempfile
 import numpy as np
 from pathlib import Path
-from color_matching import match_color_reinhard
-from occlusion import generate_feathered_occlusion_mask
 from stabilization import TemporalStabilizer
 from restoration import FaceRestorer
 from ffmpeg_utils import extract_audio, mux_frames_and_audio
@@ -17,6 +15,40 @@ class JobProcessor:
         self.stabilizer = TemporalStabilizer()
         self.restorer = FaceRestorer()
         self.identity_aggregator = IdentityAggregator()
+
+    @staticmethod
+    def _restore_face_region(image: np.ndarray, bbox, restorer: FaceRestorer) -> np.ndarray:
+        """Restore only the swapped face, with margin, then blend it back."""
+        h, w = image.shape[:2]
+        x1, y1, x2, y2 = [int(round(float(v))) for v in bbox]
+        fw, fh = max(x2 - x1, 1), max(y2 - y1, 1)
+        margin_x = max(int(fw * 0.35), 16)
+        margin_y = max(int(fh * 0.45), 16)
+        rx1, ry1 = max(0, x1 - margin_x), max(0, y1 - margin_y)
+        rx2, ry2 = min(w, x2 + margin_x), min(h, y2 + margin_y)
+        if rx2 <= rx1 or ry2 <= ry1:
+            return image
+
+        crop = image[ry1:ry2, rx1:rx2].copy()
+        restored = restorer.restore(crop)
+        if restored is None or restored.shape != crop.shape:
+            return image
+
+        # Blend only around the actual face bbox, keeping hair/background details
+        # from the original swapped frame untouched.
+        mask = np.zeros((ry2 - ry1, rx2 - rx1), dtype=np.float32)
+        cx = ((x1 + x2) / 2.0) - rx1
+        cy = ((y1 + y2) / 2.0) - ry1
+        ax = max((x2 - x1) * 0.58, 8)
+        ay = max((y2 - y1) * 0.72, 8)
+        cv2.ellipse(mask, (int(cx), int(cy)), (int(ax), int(ay)), 0, 0, 360, 1.0, -1)
+        mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=max(fw * 0.08, 2), sigmaY=max(fh * 0.08, 2))
+        mask = mask[..., None]
+        image[ry1:ry2, rx1:rx2] = (
+            restored.astype(np.float32) * mask
+            + crop.astype(np.float32) * (1.0 - mask)
+        ).clip(0, 255).astype(np.uint8)
+        return image
 
     def process_job(self, job_payload: dict, target_file: Path, reference_files: list, progress_cb) -> Path:
         media_type = job_payload.get("media_type", "image")
@@ -51,32 +83,17 @@ class JobProcessor:
             else:
                 target_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
 
+            # Keep the original full-resolution target as the base. InsightFace
+            # performs the geometric swap and pastes it back into this image.
             swapped = swap_face(tgt, target_face, source_face)
 
-            # Match the source/target appearance before restoration. This reduces
-            # obvious color/skin-tone discontinuities around the swapped region.
-            if job_payload.get("color_matching", True):
-                try:
-                    swapped = match_color_reinhard(tgt, swapped, target_face.bbox)
-                except Exception as exc:
-                    print(f"[ColorMatch] skipped: {exc}")
-
-            # Feather the face boundary so the swap blends into the target naturally.
-            try:
-                mask = generate_feathered_occlusion_mask(swapped.shape, target_face.bbox)
-                if mask is not None and mask.shape[:2] == swapped.shape[:2]:
-                    alpha = np.clip(mask.astype(np.float32), 0.0, 1.0)
-                    if alpha.ndim == 2:
-                        alpha = alpha[..., None]
-                    swapped = (swapped.astype(np.float32) * alpha + tgt.astype(np.float32) * (1.0 - alpha)).clip(0, 255).astype(np.uint8)
-            except Exception as exc:
-                print(f"[Blend] skipped: {exc}")
-
+            # Do NOT run GFPGAN on the whole image: that softens the entire photo
+            # and makes the swapped face look blurry. Restore only the face region.
             if job_payload.get("face_restoration", True):
-                swapped = self.restorer.restore(swapped)
+                swapped = self._restore_face_region(swapped, target_face.bbox, self.restorer)
 
             res_path = out_dir / "result.png"
-            cv2.imwrite(str(res_path), swapped)
+            cv2.imwrite(str(res_path), swapped, [cv2.IMWRITE_PNG_COMPRESSION, 3])
             progress_cb(100.0, "COMPLETED", "Image Transformation Complete")
             return res_path
 
@@ -125,15 +142,11 @@ class JobProcessor:
                     out_frame = swap_face(frame, chosen, source_face)
                     swapped_count += 1
 
-                    # NOTE: restoration is applied only to the detected face crop.
                     if job_payload.get("face_restoration", True):
-                        x1, y1, x2, y2 = [int(v) for v in chosen.bbox]
-                        x1, y1 = max(x1, 0), max(y1, 0)
-                        x2, y2 = min(x2, out_frame.shape[1]), min(y2, out_frame.shape[0])
-                        if x2 > x1 and y2 > y1:
-                            out_frame[y1:y2, x1:x2] = self.restorer.restore(out_frame[y1:y2, x1:x2])
-                    if job_payload.get("temporal_stabilization", False):
-                        out_frame = self.stabilizer.smooth_frame(out_frame)
+                        out_frame = self._restore_face_region(out_frame, chosen.bbox, self.restorer)
+
+                    # Whole-frame EMA blending is intentionally not used here;
+                    # it causes visible ghosting and reduces sharpness.
                 else:
                     out_frame = frame
 
