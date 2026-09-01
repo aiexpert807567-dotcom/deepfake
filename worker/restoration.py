@@ -39,7 +39,7 @@ def _get_restorer():
         model_path = _ensure_model()
         _restorer = GFPGANer(
             model_path=str(model_path),
-            upscale=1,
+            upscale=2,
             arch="clean",
             channel_multiplier=2,
             bg_upsampler=None,
@@ -48,26 +48,54 @@ def _get_restorer():
 
 
 class FaceRestorer:
-    # Low strength is intentional: GFPGAN can over-smooth already-good swapped faces.
-    def __init__(self, strength: float = 0.18):
+    # Moderate restoration strength: enough to recover facial detail from the
+    # 128px swap result without replacing the identity with an over-smoothed face.
+    def __init__(self, strength: float = 0.32):
         self.strength = float(np.clip(strength, 0.0, 1.0))
 
     def restore(self, face_bgr: np.ndarray) -> np.ndarray:
         try:
+            if face_bgr is None or face_bgr.size == 0:
+                return face_bgr
+
+            h, w = face_bgr.shape[:2]
+            if min(h, w) < 64:
+                return face_bgr
+
             restorer = _get_restorer()
             _, _, restored = restorer.enhance(
-                face_bgr, has_aligned=False, only_center_face=True, paste_back=True
+                face_bgr,
+                has_aligned=False,
+                only_center_face=True,
+                paste_back=True,
             )
             if restored is None:
                 return face_bgr
+
+            # GFPGAN is configured at 2x. Bring the enhanced crop back to the
+            # exact crop size before compositing it into the original frame.
             if restored.shape[:2] != face_bgr.shape[:2]:
-                restored = cv2.resize(restored, (face_bgr.shape[1], face_bgr.shape[0]), interpolation=cv2.INTER_LANCZOS4)
+                restored = cv2.resize(
+                    restored,
+                    (w, h),
+                    interpolation=cv2.INTER_LANCZOS4,
+                )
 
-            result = cv2.addWeighted(restored, self.strength, face_bgr, 1.0 - self.strength, 0)
+            restored = np.clip(restored, 0, 255).astype(np.uint8)
 
-            # Recover local micro-contrast without changing the surrounding image.
-            blur = cv2.GaussianBlur(result, (0, 0), 1.0)
-            result = cv2.addWeighted(result, 1.18, blur, -0.18, 0)
+            # Preserve the swap's original structure while adding facial detail.
+            result = cv2.addWeighted(
+                restored,
+                self.strength,
+                face_bgr,
+                1.0 - self.strength,
+                0,
+            )
+
+            # Very light high-frequency recovery; do not apply whole-image
+            # sharpening because that makes the face boundary look artificial.
+            blur = cv2.GaussianBlur(result, (0, 0), 0.85)
+            result = cv2.addWeighted(result, 1.10, blur, -0.10, 0)
             return np.clip(result, 0, 255).astype(np.uint8)
         except Exception as exc:
             print(f"[Restoration] GFPGAN failed, returning original crop: {exc}")
