@@ -7,9 +7,6 @@ import numpy as np
 
 
 def _patch_torchvision_shim():
-    # basicsr (a GFPGAN dependency) still imports from torchvision.transforms
-    # .functional_tensor, which newer torchvision versions removed. Shim it
-    # back in before anything imports basicsr/gfpgan.
     try:
         import torchvision.transforms.functional_tensor  # noqa: F401
     except ImportError:
@@ -51,8 +48,9 @@ def _get_restorer():
 
 
 class FaceRestorer:
-    def __init__(self, strength: float = 0.4):
-        self.strength = strength
+    # Low strength is intentional: GFPGAN can over-smooth already-good swapped faces.
+    def __init__(self, strength: float = 0.18):
+        self.strength = float(np.clip(strength, 0.0, 1.0))
 
     def restore(self, face_bgr: np.ndarray) -> np.ndarray:
         try:
@@ -63,8 +61,14 @@ class FaceRestorer:
             if restored is None:
                 return face_bgr
             if restored.shape[:2] != face_bgr.shape[:2]:
-                restored = cv2.resize(restored, (face_bgr.shape[1], face_bgr.shape[0]))
-            return cv2.addWeighted(restored, self.strength, face_bgr, 1.0 - self.strength, 0)
+                restored = cv2.resize(restored, (face_bgr.shape[1], face_bgr.shape[0]), interpolation=cv2.INTER_LANCZOS4)
+
+            result = cv2.addWeighted(restored, self.strength, face_bgr, 1.0 - self.strength, 0)
+
+            # Recover local micro-contrast without changing the surrounding image.
+            blur = cv2.GaussianBlur(result, (0, 0), 1.0)
+            result = cv2.addWeighted(result, 1.18, blur, -0.18, 0)
+            return np.clip(result, 0, 255).astype(np.uint8)
         except Exception as exc:
-            print(f"[Restoration] GFPGAN failed, returning unrestored crop: {exc}")
+            print(f"[Restoration] GFPGAN failed, returning original crop: {exc}")
             return face_bgr
