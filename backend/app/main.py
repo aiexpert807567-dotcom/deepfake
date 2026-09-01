@@ -30,8 +30,6 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
-
-
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "ai-face-studio-backend", "version": "1.2.0"}
@@ -122,15 +120,23 @@ async def download_result(filename: str):
 async def worker_power(req: WorkerPowerRequest):
     if not req.enabled and job_manager.get_active_job():
         raise HTTPException(status_code=409, detail="Cannot turn off GPU while a job is processing. Wait for completion or stop the active job first.")
-    worker_manager.set_power(req.enabled)
+
     if req.enabled:
-        start_session()
         try:
-            trigger_kaggle_run()
+            worker_manager.set_power(True)
+            start_session()
+            result = trigger_kaggle_run()
+            print(f"[Kaggle Trigger] Started successfully: {result}")
+            return worker_manager.get_status()
         except Exception as exc:
-            print(f"[Kaggle Trigger] Failed to start Kaggle kernel: {exc}")
-    else:
-        stop_session()
+            worker_manager.set_power(False)
+            stop_session()
+            error_message = f"Kaggle GPU startup failed: {type(exc).__name__}: {exc}"
+            print(f"[Kaggle Trigger] {error_message}")
+            raise HTTPException(status_code=502, detail=error_message)
+
+    worker_manager.set_power(False)
+    stop_session()
     return worker_manager.get_status()
 
 @app.get("/api/worker/usage")
