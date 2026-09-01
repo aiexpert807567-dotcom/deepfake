@@ -34,6 +34,43 @@ class JobProcessor:
         return image
 
     @staticmethod
+    def _preserve_target_detail(original, swapped, bbox, strength=0.72):
+        """Transfer only high-frequency target texture onto the swapped face.
+        This keeps the new identity while recovering pores, hairline detail and
+        local contrast that are lost when the 128px swap model reconstructs the face.
+        """
+        h, w = original.shape[:2]
+        x1, y1, x2, y2 = [int(round(float(v))) for v in bbox]
+        fw, fh = max(x2-x1,1), max(y2-y1,1)
+        mx, my = max(int(fw*.22),10), max(int(fh*.28),10)
+        rx1, ry1 = max(0,x1-mx), max(0,y1-my)
+        rx2, ry2 = min(w,x2+mx), min(h,y2+my)
+        if rx2 <= rx1 or ry2 <= ry1: return swapped
+
+        src = original[ry1:ry2,rx1:rx2].astype(np.float32)
+        dst = swapped[ry1:ry2,rx1:rx2].astype(np.float32)
+
+        # Use luminance detail only, so target colour/identity is not reintroduced.
+        src_y = cv2.cvtColor(src.astype(np.uint8), cv2.COLOR_BGR2YCrCb)[...,0].astype(np.float32)
+        dst_ycc = cv2.cvtColor(dst.astype(np.uint8), cv2.COLOR_BGR2YCrCb).astype(np.float32)
+        src_low = cv2.GaussianBlur(src_y,(0,0),1.35)
+        detail = src_y - src_low
+        detail = cv2.GaussianBlur(detail,(0,0),0.35)
+
+        # Avoid transferring compression/noise too aggressively.
+        detail = np.clip(detail, -22.0, 22.0)
+        dst_ycc[...,0] = np.clip(dst_ycc[...,0] + detail * strength, 0, 255)
+        detailed = cv2.cvtColor(dst_ycc.astype(np.uint8), cv2.COLOR_YCrCb2BGR)
+
+        mask = np.zeros((ry2-ry1,rx2-rx1), dtype=np.float32)
+        cx, cy = ((x1+x2)/2)-rx1, ((y1+y2)/2)-ry1
+        cv2.ellipse(mask,(int(cx),int(cy)),(max(int(fw*.62),8),max(int(fh*.78),8)),0,0,360,1.0,-1)
+        mask = cv2.GaussianBlur(mask,(0,0),max(fw*.055,1.5))[...,None]
+        dst = dst*(1-mask) + detailed.astype(np.float32)*mask
+        swapped[ry1:ry2,rx1:rx2] = np.clip(dst,0,255).astype(np.uint8)
+        return swapped
+
+    @staticmethod
     def _sharpen_face_region(image, bbox):
         h, w = image.shape[:2]
         x1, y1, x2, y2 = [int(round(float(v))) for v in bbox]
@@ -76,6 +113,8 @@ class JobProcessor:
             else:
                 target_face=max(faces,key=lambda f:(f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))
             swapped=swap_face(tgt,target_face,source_face)
+            # First recover target-image micro-detail, then optionally restore facial structure.
+            swapped=self._preserve_target_detail(tgt,swapped,target_face.bbox,strength=0.78)
             if job_payload.get('face_restoration',False):
                 swapped=self._restore_face_region(swapped,target_face.bbox,self.restorer)
             swapped=self._sharpen_face_region(swapped,target_face.bbox)
@@ -104,6 +143,7 @@ class JobProcessor:
                 prev_center=((chosen.bbox[0]+chosen.bbox[2])/2,(chosen.bbox[1]+chosen.bbox[3])/2)
             if chosen is not None:
                 out_frame=swap_face(frame,chosen,source_face); swapped_count+=1
+                out_frame=self._preserve_target_detail(frame,out_frame,chosen.bbox,strength=0.78)
                 if job_payload.get('face_restoration',False): out_frame=self._restore_face_region(out_frame,chosen.bbox,self.restorer)
                 out_frame=self._sharpen_face_region(out_frame,chosen.bbox)
             else: out_frame=frame
