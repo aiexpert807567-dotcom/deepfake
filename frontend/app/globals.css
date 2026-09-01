@@ -16,42 +16,63 @@ body {
   overflow-x: hidden;
 }
 
-/* Pure white studio theme */
-.bg-studio-950,
-.bg-studio-900,
-.bg-studio-850,
-.bg-studio-800,
-.bg-studio-750,
-.bg-studio-700 {
+/* =========================================================
+   PURE WHITE UI THEME
+   Every studio surface is white, including opacity variants.
+   ========================================================= */
+[class*="bg-studio-"] {
   background-color: #ffffff !important;
 }
 
-/* Dark text on white backgrounds */
-.text-white { color: #111827 !important; }
-.text-gray-100 { color: #111827 !important; }
-.text-gray-200 { color: #1f2937 !important; }
-.text-gray-300 { color: #374151 !important; }
-.text-gray-400 { color: #64748b !important; }
-.text-gray-500 { color: #64748b !important; }
+[class*="bg-gray-900"],
+[class*="bg-gray-800"],
+[class*="bg-gray-700"],
+[class*="bg-black"] {
+  background-color: #ffffff !important;
+}
 
-/* Keep borders subtle and visible on white */
-.border-studio-700,
-.border-studio-700\/70,
-.border-studio-700\/60,
-.border-studio-700\/50,
-.border-studio-700\/40 {
+/* Dark, readable typography for white surfaces */
+.text-white {
+  color: #111827 !important;
+}
+.text-gray-100 {
+  color: #111827 !important;
+}
+.text-gray-200 {
+  color: #1f2937 !important;
+}
+.text-gray-300 {
+  color: #374151 !important;
+}
+.text-gray-400 {
+  color: #64748b !important;
+}
+.text-gray-500 {
+  color: #64748b !important;
+}
+
+/* White surfaces with subtle borders */
+[class*="border-studio-"] {
   border-color: #e5e7eb !important;
 }
 
-/* Common dark Tailwind surfaces → white */
-.bg-gray-900,
-.bg-gray-800,
-.bg-gray-700,
-.bg-black {
-  background-color: #ffffff !important;
+/* Keep the colored gradient/action buttons readable */
+.bg-gradient-to-r .text-white,
+.bg-gradient-to-tr .text-white,
+[class*="bg-gradient-"] .text-white,
+button.bg-gradient-to-r,
+label.bg-gradient-to-r {
+  color: #ffffff !important;
 }
 
-/* Inputs and controls */
+/* Also keep standalone accent buttons/icons white when they use text-white */
+.bg-studio-accent.text-white,
+button.bg-studio-accent .text-white,
+button[class*="bg-studio-accent"] .text-white {
+  color: #ffffff !important;
+}
+
+/* Inputs */
 input,
 textarea,
 select {
@@ -65,7 +86,7 @@ textarea::placeholder {
   color: #9ca3af !important;
 }
 
-/* Soft shadows for separation */
+/* Soft separation instead of dark shadows */
 .shadow-2xl,
 .shadow-xl,
 .shadow-lg,
