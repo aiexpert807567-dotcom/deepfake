@@ -39,7 +39,18 @@ class JobProcessor:
             faces = app.get(tgt)
             if not faces:
                 raise ValueError("No face detected in the target image")
-            target_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+
+            bbox = job_payload.get("target_face_bbox")
+            if bbox:
+                target_center = ((bbox["x1"] + bbox["x2"]) / 2.0, (bbox["y1"] + bbox["y2"]) / 2.0)
+                target_face = min(
+                    faces,
+                    key=lambda f: ((f.bbox[0] + f.bbox[2]) / 2 - target_center[0]) ** 2
+                    + ((f.bbox[1] + f.bbox[3]) / 2 - target_center[1]) ** 2,
+                )
+            else:
+                target_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+
             swapped = swap_face(tgt, target_face, source_face)
             if job_payload.get("face_restoration", True):
                 swapped = self.restorer.restore(swapped)
