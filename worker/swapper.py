@@ -1,40 +1,181 @@
 import os
 import glob
-from pathlib import Path
 import urllib.request
+from pathlib import Path
 
-_KAGGLE_INPUT_DIRS = ["/kaggle/input/inswapper", "/kaggle/input/inswapper-128", "/kaggle/input/inswapper_128"]
-_FALLBACK_URL = "https://huggingface.co/datasets/Gourieff/ReActor/resolve/main/models/inswapper_128.onnx"
-_LOCAL_MODEL_PATH = Path(__file__).resolve().parent / "models" / "inswapper_128.onnx"
+import cv2
+import numpy as np
 
-_swapper = None
+_KAGGLE_INPUT_DIRS = [
+    "/kaggle/input/simswap",
+    "/kaggle/input/simswap-512",
+    "/kaggle/input/inswapper",
+    "/kaggle/input/inswapper-128",
+    "/kaggle/input/inswapper_128",
+]
 
-def _find_model_path() -> str:
+_ASSET_BASE = "https://github.com/facefusion/facefusion-assets/releases/download/models-3.0.0"
+_SIMSWAP_URL = f"{_ASSET_BASE}/simswap_unofficial_512.onnx"
+_SIMSWAP_CONVERTER_URL = f"{_ASSET_BASE}/arcface_converter_simswap.onnx"
+_INSWAPPER_URL = "https://huggingface.co/datasets/Gourieff/ReActor/resolve/main/models/inswapper_128.onnx"
+
+_MODEL_DIR = Path(__file__).resolve().parent / "models"
+_SIMSWAP_PATH = _MODEL_DIR / "simswap_unofficial_512.onnx"
+_SIMSWAP_CONVERTER_PATH = _MODEL_DIR / "arcface_converter_simswap.onnx"
+_INSWAPPER_PATH = _MODEL_DIR / "inswapper_128.onnx"
+
+_swapper_session = None
+_converter_session = None
+_inswapper = None
+_template = np.array(
+    [
+        [38.2946, 51.6963],
+        [73.5318, 51.5014],
+        [56.0252, 71.7366],
+        [41.5493, 92.3655],
+        [70.7299, 92.2041],
+    ],
+    dtype=np.float32,
+)
+
+
+def _download(url: str, path: Path, label: str) -> str:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists() and path.stat().st_size > 1024 * 1024:
+        return str(path)
+    print(f"[Swapper] Downloading {label}...")
+    tmp = path.with_suffix(path.suffix + ".part")
+    urllib.request.urlretrieve(url, tmp)
+    tmp.replace(path)
+    return str(path)
+
+
+def _find_kaggle_model(name: str):
     for d in _KAGGLE_INPUT_DIRS:
-        if os.path.isdir(d):
-            matches = glob.glob(os.path.join(d, "**", "*.onnx"), recursive=True)
-            if matches:
-                print(f"[Swapper] Using Kaggle dataset model: {matches[0]}")
-                return matches[0]
-    if _LOCAL_MODEL_PATH.exists():
-        return str(_LOCAL_MODEL_PATH)
-    _LOCAL_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    print("[Swapper] Kaggle dataset not found — downloading inswapper_128.onnx (~550MB) from fallback URL...")
-    urllib.request.urlretrieve(_FALLBACK_URL, _LOCAL_MODEL_PATH)
-    return str(_LOCAL_MODEL_PATH)
+        if not os.path.isdir(d):
+            continue
+        matches = glob.glob(os.path.join(d, "**", name), recursive=True)
+        if matches:
+            return matches[0]
+    return None
 
-def get_swapper():
-    global _swapper
-    if _swapper is None:
+
+def _resolve_simswap_paths():
+    model = _find_kaggle_model("simswap_unofficial_512.onnx")
+    converter = _find_kaggle_model("arcface_converter_simswap.onnx")
+    if model:
+        print(f"[Swapper] Using Kaggle SimSwap 512 model: {model}")
+    else:
+        model = _download(_SIMSWAP_URL, _SIMSWAP_PATH, "SimSwap 512 model (~239 MB)")
+    if converter:
+        print(f"[Swapper] Using Kaggle SimSwap ArcFace converter: {converter}")
+    else:
+        converter = _download(_SIMSWAP_CONVERTER_URL, _SIMSWAP_CONVERTER_PATH, "SimSwap ArcFace converter (~21 MB)")
+    return model, converter
+
+
+def _get_sessions():
+    global _swapper_session, _converter_session
+    if _swapper_session is None or _converter_session is None:
+        import onnxruntime as ort
+        providers = [p for p in ["CUDAExecutionProvider", "CPUExecutionProvider"] if p in ort.get_available_providers()]
+        model_path, converter_path = _resolve_simswap_paths()
+        print(f"[Swapper] ONNX providers: {providers}")
+        _swapper_session = ort.InferenceSession(model_path, providers=providers)
+        _converter_session = ort.InferenceSession(converter_path, providers=providers)
+        print("[Swapper] High-quality SimSwap 512 loaded")
+    return _swapper_session, _converter_session
+
+
+def _aligned_crop(frame, face, size=512):
+    kps = getattr(face, "kps", None)
+    if kps is None:
+        kps = getattr(face, "landmark_5", None)
+    if kps is None:
+        x1, y1, x2, y2 = [float(v) for v in face.bbox]
+        cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+        side = max(x2 - x1, y2 - y1) * 1.55
+        src = np.array([
+            [cx - side * 0.22, cy - side * 0.18],
+            [cx + side * 0.22, cy - side * 0.18],
+            [cx, cy],
+            [cx - side * 0.18, cy + side * 0.23],
+            [cx + side * 0.18, cy + side * 0.23],
+        ], dtype=np.float32)
+    else:
+        src = np.asarray(kps, dtype=np.float32).reshape(5, 2)
+
+    dst = _template * (float(size) / 112.0)
+    matrix, _ = cv2.estimateAffinePartial2D(src, dst, method=cv2.LMEDS)
+    if matrix is None:
+        raise ValueError("Could not align target face")
+    crop = cv2.warpAffine(frame, matrix, (size, size), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+    return crop, matrix
+
+
+def _paste_back(frame, swapped_rgb, matrix, face, size=512):
+    h, w = frame.shape[:2]
+    inv = cv2.invertAffineTransform(matrix)
+    swapped_bgr = cv2.cvtColor(np.clip(swapped_rgb, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
+
+    warped = cv2.warpAffine(swapped_bgr, inv, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_TRANSPARENT)
+    mask_small = np.zeros((size, size), dtype=np.float32)
+    cv2.ellipse(mask_small, (size // 2, int(size * 0.54)), (int(size * 0.39), int(size * 0.47)), 0, 0, 360, 1.0, -1)
+    mask_small = cv2.GaussianBlur(mask_small, (0, 0), size * 0.035)
+    mask = cv2.warpAffine(mask_small, inv, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+    mask = mask[..., None].clip(0.0, 1.0)
+
+    # Keep the original outside the aligned face and softly blend the boundary.
+    result = frame.astype(np.float32) * (1.0 - mask) + warped.astype(np.float32) * mask
+    return np.clip(result, 0, 255).astype(np.uint8)
+
+
+def _simswap_face(frame, target_face, source_face):
+    swapper, converter = _get_sessions()
+    embedding = np.asarray(source_face.embedding, dtype=np.float32).reshape(1, -1)
+    converted = converter.run(None, {converter.get_inputs()[0].name: embedding})[0]
+    converted = converted.reshape(1, -1).astype(np.float32)
+    norm = np.linalg.norm(converted, axis=1, keepdims=True) + 1e-8
+    converted = converted / norm
+
+    crop, matrix = _aligned_crop(frame, target_face, 512)
+    rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+    inp = rgb.transpose(2, 0, 1)[None].astype(np.float32)
+
+    inputs = {}
+    for item in swapper.get_inputs():
+        if item.name == "source":
+            inputs[item.name] = converted
+        elif item.name == "target":
+            inputs[item.name] = inp
+    if len(inputs) != 2:
+        raise RuntimeError(f"Unexpected SimSwap inputs: {[i.name for i in swapper.get_inputs()]}")
+
+    output = swapper.run(None, inputs)[0][0]
+    if output.shape[0] == 3:
+        output = output.transpose(1, 2, 0)
+    output = np.clip(output, 0.0, 1.0) * 255.0
+    return _paste_back(frame, output, matrix, target_face, 512)
+
+
+def _get_inswapper():
+    global _inswapper
+    if _inswapper is None:
         import insightface
         import onnxruntime
-        print(f"[Swapper] onnxruntime available providers: {onnxruntime.get_available_providers()}")
-        model_path = _find_model_path()
-        _swapper = insightface.model_zoo.get_model(
-            model_path, providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
+        if not _INSWAPPER_PATH.exists():
+            _download(_INSWAPPER_URL, _INSWAPPER_PATH, "Inswapper 128 fallback (~550 MB)")
+        print(f"[Swapper] Fallback providers: {onnxruntime.get_available_providers()}")
+        _inswapper = insightface.model_zoo.get_model(
+            str(_INSWAPPER_PATH),
+            providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
         )
-    return _swapper
+    return _inswapper
+
 
 def swap_face(frame, target_face, source_face):
-    swapper = get_swapper()
-    return swapper.get(frame, target_face, source_face, paste_back=True)
+    try:
+        return _simswap_face(frame, target_face, source_face)
+    except Exception as exc:
+        print(f"[Swapper] SimSwap 512 failed; falling back to Inswapper 128: {exc}")
+        return _get_inswapper().get(frame, target_face, source_face, paste_back=True)
