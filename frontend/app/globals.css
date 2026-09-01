@@ -16,14 +16,17 @@ body {
   overflow-x: hidden;
 }
 
-/* Extra-bright clean studio theme */
-.bg-studio-950 { background-color: #ffffff !important; }
-.bg-studio-900 { background-color: #ffffff !important; }
-.bg-studio-850 { background-color: #ffffff !important; }
-.bg-studio-800 { background-color: #f8fafc !important; }
-.bg-studio-750 { background-color: #f1f5f9 !important; }
-.bg-studio-700 { background-color: #e2e8f0 !important; }
+/* Pure white studio theme */
+.bg-studio-950,
+.bg-studio-900,
+.bg-studio-850,
+.bg-studio-800,
+.bg-studio-750,
+.bg-studio-700 {
+  background-color: #ffffff !important;
+}
 
+/* Dark text on white backgrounds */
 .text-white { color: #111827 !important; }
 .text-gray-100 { color: #111827 !important; }
 .text-gray-200 { color: #1f2937 !important; }
@@ -31,16 +34,42 @@ body {
 .text-gray-400 { color: #64748b !important; }
 .text-gray-500 { color: #64748b !important; }
 
+/* Keep borders subtle and visible on white */
 .border-studio-700,
 .border-studio-700\/70,
 .border-studio-700\/60,
 .border-studio-700\/50,
 .border-studio-700\/40 {
-  border-color: #e2e8f0 !important;
+  border-color: #e5e7eb !important;
 }
 
+/* Common dark Tailwind surfaces → white */
+.bg-gray-900,
+.bg-gray-800,
+.bg-gray-700,
+.bg-black {
+  background-color: #ffffff !important;
+}
+
+/* Inputs and controls */
+input,
+textarea,
+select {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Soft shadows for separation */
 .shadow-2xl,
-.shadow-xl {
+.shadow-xl,
+.shadow-lg,
+.shadow-md {
   --tw-shadow-color: rgba(15, 23, 42, 0.08);
 }
 
@@ -49,10 +78,10 @@ body {
   height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: #ffffff;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d1d5db;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
