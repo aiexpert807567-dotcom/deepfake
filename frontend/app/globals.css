@@ -6,13 +6,35 @@
   box-sizing: border-box;
 }
 
+html,
 body {
-  background-color: #06070a;
-  color: #f3f4f6;
+  background-color: #f6f8fc;
+  color: #172033;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+}
+
+/* Bright, clean studio theme */
+.bg-studio-950 { background-color: #f6f8fc !important; }
+.bg-studio-900 { background-color: #ffffff !important; }
+.bg-studio-850 { background-color: #f8fafc !important; }
+.bg-studio-800 { background-color: #f1f5f9 !important; }
+.bg-studio-750 { background-color: #e8eef7 !important; }
+.bg-studio-700 { background-color: #dbe3ef !important; }
+
+.text-white { color: #172033 !important; }
+.text-gray-100 { color: #172033 !important; }
+.text-gray-200 { color: #334155 !important; }
+.text-gray-300 { color: #475569 !important; }
+.text-gray-400 { color: #64748b !important; }
+.text-gray-500 { color: #64748b !important; }
+
+.border-studio-700\/60,
+.border-studio-700\/50,
+.border-studio-700\/40 {
+  border-color: #dbe3ef !important;
 }
 
 ::-webkit-scrollbar {
@@ -20,10 +42,10 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0c0e15;
+  background: #eef2f7;
 }
 ::-webkit-scrollbar-thumb {
-  background: #262e44;
+  background: #c5cfdd;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
