@@ -8,44 +8,51 @@
 
 html,
 body {
-  background-color: #f6f8fc;
-  color: #172033;
+  background-color: #ffffff;
+  color: #111827;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
 }
 
-/* Bright, clean studio theme */
-.bg-studio-950 { background-color: #f6f8fc !important; }
+/* Extra-bright clean studio theme */
+.bg-studio-950 { background-color: #ffffff !important; }
 .bg-studio-900 { background-color: #ffffff !important; }
-.bg-studio-850 { background-color: #f8fafc !important; }
-.bg-studio-800 { background-color: #f1f5f9 !important; }
-.bg-studio-750 { background-color: #e8eef7 !important; }
-.bg-studio-700 { background-color: #dbe3ef !important; }
+.bg-studio-850 { background-color: #ffffff !important; }
+.bg-studio-800 { background-color: #f8fafc !important; }
+.bg-studio-750 { background-color: #f1f5f9 !important; }
+.bg-studio-700 { background-color: #e2e8f0 !important; }
 
-.text-white { color: #172033 !important; }
-.text-gray-100 { color: #172033 !important; }
-.text-gray-200 { color: #334155 !important; }
-.text-gray-300 { color: #475569 !important; }
+.text-white { color: #111827 !important; }
+.text-gray-100 { color: #111827 !important; }
+.text-gray-200 { color: #1f2937 !important; }
+.text-gray-300 { color: #374151 !important; }
 .text-gray-400 { color: #64748b !important; }
 .text-gray-500 { color: #64748b !important; }
 
+.border-studio-700,
+.border-studio-700\/70,
 .border-studio-700\/60,
 .border-studio-700\/50,
 .border-studio-700\/40 {
-  border-color: #dbe3ef !important;
+  border-color: #e2e8f0 !important;
+}
+
+.shadow-2xl,
+.shadow-xl {
+  --tw-shadow-color: rgba(15, 23, 42, 0.08);
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
-  background: #eef2f7;
+  background: #f8fafc;
 }
 ::-webkit-scrollbar-thumb {
-  background: #c5cfdd;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
