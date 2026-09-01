@@ -48,8 +48,8 @@ def _get_restorer():
 
 
 class FaceRestorer:
-    def __init__(self, strength: float = 0.42):
-        self.strength = float(np.clip(strength, 0.0, 1.0))
+    def __init__(self, strength: float = 1.0):
+        self.strength = 1.0
 
     def restore(self, face_bgr: np.ndarray) -> np.ndarray:
         try:
@@ -78,17 +78,14 @@ class FaceRestorer:
                 )
 
             restored = np.clip(restored, 0, 255).astype(np.uint8)
-            result = cv2.addWeighted(
-                restored,
-                self.strength,
-                face_bgr,
-                1.0 - self.strength,
-                0,
-            )
 
-            # Stronger local micro-contrast recovery, still limited to the face crop.
-            blur = cv2.GaussianBlur(result, (0, 0), 0.7)
-            result = cv2.addWeighted(result, 1.16, blur, -0.16, 0)
+            # Maximum restoration: use the full GFPGAN result rather than
+            # blending it back with the lower-resolution swap crop.
+            result = restored
+
+            # Maximum local micro-contrast recovery.
+            blur = cv2.GaussianBlur(result, (0, 0), 0.55)
+            result = cv2.addWeighted(result, 1.22, blur, -0.22, 0)
             return np.clip(result, 0, 255).astype(np.uint8)
         except Exception as exc:
             print(f"[Restoration] GFPGAN failed, returning original crop: {exc}")
