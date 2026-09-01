@@ -1,12 +1,13 @@
 import os
 import cv2
 import tempfile
+import copy
 import numpy as np
 from pathlib import Path
 from stabilization import TemporalStabilizer
 from restoration import FaceRestorer
 from ffmpeg_utils import extract_audio, mux_frames_and_audio
-from identity import IdentityAggregator, get_face_app
+from identity import IdentityAggregator, get_face_app, estimate_face_pose
 from swapper import swap_face
 
 class JobProcessor:
@@ -82,6 +83,49 @@ class JobProcessor:
             return np.asarray(current, dtype=np.float32)
         return alpha*np.asarray(previous,dtype=np.float32) + (1.0-alpha)*np.asarray(current,dtype=np.float32)
 
+    @staticmethod
+    def _pose_distance(a, b):
+        """Weighted angular distance: yaw matters most for side-view matching."""
+        delta = np.asarray(a, dtype=np.float32) - np.asarray(b, dtype=np.float32)
+        return float(np.sqrt(delta[0]**2 + 0.65*delta[1]**2 + 0.35*delta[2]**2))
+
+    @staticmethod
+    def _select_reference(reference_candidates, target_face, previous_index=None):
+        """Choose the reference whose head pose best matches the target pose.
+        A small hysteresis bonus prevents rapid reference switching in video.
+        """
+        if not reference_candidates:
+            return None, None
+        target_pose = estimate_face_pose(target_face)
+        scored = []
+        for candidate in reference_candidates:
+            distance = JobProcessor._pose_distance(target_pose, candidate['pose'])
+            # Prefer clearer references when pose is nearly tied.
+            quality_bonus = min(float(candidate['weight']) / 1000.0, 2.0)
+            hysteresis = 7.0 if previous_index is not None and candidate['index'] == previous_index else 0.0
+            score = distance - quality_bonus - hysteresis
+            scored.append((score, candidate))
+        scored.sort(key=lambda x: x[0])
+        best_score, best = scored[0]
+
+        # Blend the two closest pose references when their poses are close.
+        # This reduces visible identity/texture jumps at intermediate angles.
+        selected_face = best['face']
+        if len(scored) > 1:
+            second_score, second = scored[1]
+            gap = max(second_score - best_score, 0.0)
+            if gap < 8.0:
+                d1 = max(best_score + 8.0, 1.0)
+                d2 = max(second_score + 8.0, 1.0)
+                w1 = 1.0 / d1
+                w2 = 1.0 / d2
+                emb = w1 * best['embedding'] + w2 * second['embedding']
+                emb /= np.linalg.norm(emb) + 1e-8
+                selected_face = copy.copy(best['face'])
+                selected_face.embedding = emb.astype(np.float32)
+                return selected_face, best['index']
+        return selected_face, best['index']
+
     def process_job(self, job_payload, target_file, reference_files, progress_cb):
         media_type = job_payload.get('media_type','image')
         out_dir = Path(tempfile.mkdtemp(prefix='studio_proc_'))
@@ -90,12 +134,13 @@ class JobProcessor:
         identity = self.identity_aggregator.build_unified_identity(ref_images)
         if identity is None: raise ValueError('Could not build an identity from the uploaded reference photos')
         source_face = identity['source_face']
-        identity_msg = f"Used {identity['num_references_used']}/{len(ref_images)} reference photos for identity"
+        reference_candidates = identity.get('reference_candidates', [])
+        identity_msg = f"Used {identity['num_references_used']}/{len(ref_images)} reference photos for identity; angle-aware matching enabled"
         print(f'[Identity] {identity_msg}')
         progress_cb(12.0,'ANALYZING',identity_msg,warning=identity_msg)
 
         if media_type == 'image':
-            progress_cb(30.0,'PROCESSING','Applying high-quality 512px face transformation')
+            progress_cb(30.0,'PROCESSING','Matching reference angle and applying high-quality 512px transformation')
             tgt = cv2.imread(str(target_file))
             if tgt is None: raise ValueError('Could not read target image')
             faces = get_face_app().get(tgt)
@@ -106,6 +151,9 @@ class JobProcessor:
                 target_face=min(faces,key=lambda f:((f.bbox[0]+f.bbox[2])/2-tc[0])**2+((f.bbox[1]+f.bbox[3])/2-tc[1])**2)
             else:
                 target_face=max(faces,key=lambda f:(f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))
+            source_face, ref_index = self._select_reference(reference_candidates, target_face)
+            if source_face is None: source_face = identity['source_face']
+            print(f'[Identity] Image target pose matched reference {ref_index + 1 if ref_index is not None else "unified"}')
             swapped=swap_face(tgt,target_face,source_face)
             swapped=self._preserve_target_detail(tgt,swapped,target_face.bbox,strength=0.28)
             if job_payload.get('face_restoration',False):
@@ -122,7 +170,7 @@ class JobProcessor:
         cap=cv2.VideoCapture(str(target_file))
         if not cap.isOpened(): raise ValueError('Could not open target video')
         fps=cap.get(cv2.CAP_PROP_FPS) or 30.0; total_frames=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
-        app=get_face_app(); bbox=job_payload.get('target_face_bbox'); prev_center=None; prev_bbox=None
+        app=get_face_app(); bbox=job_payload.get('target_face_bbox'); prev_center=None; prev_bbox=None; prev_ref_index=None
         if bbox:
             prev_center=((bbox['x1']+bbox['x2'])/2,(bbox['y1']+bbox['y2'])/2)
             prev_bbox=np.array([bbox['x1'],bbox['y1'],bbox['x2'],bbox['y2']],dtype=np.float32)
@@ -142,6 +190,8 @@ class JobProcessor:
                 prev_bbox=smooth
                 prev_center=((smooth[0]+smooth[2])/2,(smooth[1]+smooth[3])/2)
             if chosen is not None:
+                source_face, prev_ref_index = self._select_reference(reference_candidates, chosen, prev_ref_index)
+                if source_face is None: source_face = identity['source_face']
                 out_frame=swap_face(frame,chosen,source_face); swapped_count+=1
                 out_frame=self._preserve_target_detail(frame,out_frame,chosen.bbox,strength=0.22)
                 if job_payload.get('face_restoration',False): out_frame=self._restore_face_region(out_frame,chosen.bbox,self.restorer)
@@ -151,7 +201,7 @@ class JobProcessor:
             cv2.imwrite(str(frames_dir/f'frame_{frame_idx:06d}.png'),out_frame); frame_idx+=1
             if total_frames: progress_cb(min(20.0+60.0*frame_idx/total_frames,80.0),'PROCESSING',f'Swapping frame {frame_idx}/{total_frames}')
         cap.release()
-        swap_msg=f'Swapped face in {swapped_count}/{frame_idx} frames'; print(f'[JobProcessor] {swap_msg}')
+        swap_msg=f'Swapped face in {swapped_count}/{frame_idx} frames with angle-aware reference matching'; print(f'[JobProcessor] {swap_msg}')
         progress_cb(82.0,'ENCODING',swap_msg,warning=swap_msg)
         final_mp4=out_dir/'result.mp4'; progress_cb(85.0,'ENCODING','Encoding high-quality H.264 video with original audio')
         mux_frames_and_audio(str(frames_dir/'frame_%06d.png'),audio_path,final_mp4,fps)
