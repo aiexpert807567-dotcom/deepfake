@@ -1,18 +1,16 @@
 {
   "id": "aiexpert80756/deepfake",
   "title": "deepfake",
-  "code_file": "worker_start.py",
+  "code_file": "deepfake.ipynb",
   "language": "python",
-  "kernel_type": "script",
+  "kernel_type": "notebook",
   "is_private": true,
   "enable_gpu": true,
   "enable_tpu": false,
   "enable_internet": true,
-  "machine_shape": "NvidiaTeslaT4",
-  "dataset_sources": [
-    "oquangthun/inswapper"
-  ],
-  "competition_sources": [],
+  "keywords": [],
+  "dataset_sources": ["oquangthun/inswapper"],
   "kernel_sources": [],
+  "competition_sources": [],
   "model_sources": []
 }

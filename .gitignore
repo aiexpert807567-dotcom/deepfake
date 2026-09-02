@@ -35,3 +35,6 @@ worker/models/
 worker/gfpgan/
 *.onnx
 *.pth
+
+# TypeScript build cache — regenerates every build, shouldn't be tracked
+frontend/tsconfig.tsbuildinfo
