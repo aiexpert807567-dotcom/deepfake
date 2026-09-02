@@ -13,42 +13,60 @@ def trigger_kaggle_run() -> dict:
     key = os.getenv("KAGGLE_KEY")
 
     if not username or not key:
-        raise RuntimeError("KAGGLE_USERNAME / KAGGLE_KEY not configured on this backend")
+        raise RuntimeError("KAGGLE_USERNAME / KAGGLE_KEY not configured on Render")
 
     metadata_path = KERNEL_DIR / "kernel-metadata.json"
-    if not metadata_path.exists():
-        raise RuntimeError("Kaggle kernel-metadata.json not found")
+    notebook_path = KERNEL_DIR / "deepfake.ipynb"
 
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if not metadata_path.exists():
+        raise RuntimeError("kernel-metadata.json not found")
+    if not notebook_path.exists():
+        raise RuntimeError("deepfake.ipynb not found")
+
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Invalid Kaggle notebook JSON: {exc}") from exc
+
+    # Kaggle requires every cell source to be an array of strings.
+    for cell in notebook.get("cells", []):
+        source = cell.get("source", [])
+        if isinstance(source, str):
+            cell["source"] = source.splitlines(True)
+        elif not isinstance(source, list):
+            cell["source"] = [str(source)]
+
+    # Validate the exact structure before sending it.
+    for i, cell in enumerate(notebook.get("cells", [])):
+        if not isinstance(cell.get("source"), list):
+            raise RuntimeError(f"Notebook cell {i} source is not a list")
+        if not all(isinstance(line, str) for line in cell["source"]):
+            raise RuntimeError(f"Notebook cell {i} contains invalid source data")
 
     metadata["enable_gpu"] = True
     metadata["enable_internet"] = True
     metadata["enable_tpu"] = False
     metadata["machine_shape"] = "NvidiaTeslaT4"
 
-    metadata_path.write_text(
-        json.dumps(metadata, indent=2) + "\n",
-        encoding="utf-8",
-    )
-
-    code_file = KERNEL_DIR / metadata["code_file"]
-    if not code_file.exists():
-        raise RuntimeError(f"Kaggle code file not found: {code_file}")
-
+    # Kaggle's push API expects the notebook itself as the `text` field.
     payload = {
-        "slug": metadata["id"],
-        "newTitle": metadata["title"],
-        "text": code_file.read_text(encoding="utf-8"),
-        "language": metadata["language"],
-        "kernelType": metadata["kernel_type"],
-        "isPrivate": metadata["is_private"],
-        "enableGpu": True,
-        "enableInternet": True,
-        "machineShape": "NvidiaTeslaT4",
-        "datasetDataSources": metadata.get("dataset_sources", []),
-        "kernelDataSources": metadata.get("kernel_sources", []),
-        "competitionDataSources": metadata.get("competition_sources", []),
-        "modelDataSources": metadata.get("model_sources", []),
+        "id": metadata["id"],
+        "title": metadata.get("title", "deepfake"),
+        "code_file": metadata.get("code_file", "deepfake.ipynb"),
+        "language": metadata.get("language", "python"),
+        "kernel_type": metadata.get("kernel_type", "notebook"),
+        "is_private": True,
+        "enable_gpu": True,
+        "enable_internet": True,
+        "enable_tpu": False,
+        "machine_shape": "NvidiaTeslaT4",
+        "dataset_sources": metadata.get("dataset_sources", []),
+        "kernel_sources": metadata.get("kernel_sources", []),
+        "competition_sources": metadata.get("competition_sources", []),
+        "model_sources": metadata.get("model_sources", []),
+        "docker_image": metadata.get("docker_image"),
+        "text": json.dumps(notebook, ensure_ascii=False, separators=(",", ":")),
     }
 
     response = requests.post(
@@ -60,15 +78,19 @@ def trigger_kaggle_run() -> dict:
     )
 
     if not response.ok:
+        try:
+            detail = response.json()
+        except Exception:
+            detail = response.text[:2000]
+
         raise RuntimeError(
-            f"Kaggle API HTTP {response.status_code}: "
-            f"{response.text[:1000]}"
+            f"Kaggle API HTTP {response.status_code}: {detail}"
         )
 
     try:
         result = response.json()
-    except ValueError:
-        result = {"raw_response": response.text[:1000]}
+    except Exception:
+        result = response.text
 
     return {
         "triggered": True,
