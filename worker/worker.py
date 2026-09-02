@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import traceback
 import requests
 from pathlib import Path
 from gpu_utils import detect_gpu_environment
@@ -112,6 +113,8 @@ def run_worker_loop():
                     print(f"[Worker] Completed Job: {job_id}")
                 except Exception as exc:
                     print(f"[Worker] Job failed: {exc}")
+                    print("[Worker] Full traceback:")
+                    traceback.print_exc()
                     session.post(
                         f"{API_URL}/api/worker/update-progress",
                         data={
