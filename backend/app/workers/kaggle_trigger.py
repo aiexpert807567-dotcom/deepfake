@@ -51,7 +51,7 @@ def trigger_kaggle_run() -> dict:
 
     # Kaggle's push API expects the notebook itself as the `text` field.
     payload = {
-        "id": metadata["id"],
+        "id": int(metadata.get("id_no", 132245566)),
         "title": metadata.get("title", "deepfake"),
         "code_file": metadata.get("code_file", "deepfake.ipynb"),
         "language": metadata.get("language", "python"),
