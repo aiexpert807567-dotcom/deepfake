@@ -71,31 +71,32 @@ def run_worker_loop():
                     except Exception as exc:
                         print(f"[Worker] Progress update failed: {exc}")
 
-                target_id = payload["target_media_id"]
                 target_path = Path(f"./temp_target_{job_id}")
-                r = session.get(
-                    f"{API_URL}/api/worker/media/{target_id}",
-                    stream=True,
-                    timeout=120,
-                )
-                r.raise_for_status()
-                with open(target_path, "wb") as out:
-                    for chunk in r.iter_content(chunk_size=1024 * 1024):
-                        if chunk:
-                            out.write(chunk)
-
                 reference_files = []
-                for ref_id in payload.get("reference_ids", []):
-                    ref_path = Path(f"./temp_ref_{job_id}_{ref_id}")
+
+                try:
+                    target_id = payload["target_media_id"]
                     r = session.get(
-                        f"{API_URL}/api/worker/media/{ref_id}",
+                        f"{API_URL}/api/worker/media/{target_id}",
+                        stream=True,
                         timeout=120,
                     )
                     r.raise_for_status()
-                    ref_path.write_bytes(r.content)
-                    reference_files.append(ref_path)
+                    with open(target_path, "wb") as out:
+                        for chunk in r.iter_content(chunk_size=1024 * 1024):
+                            if chunk:
+                                out.write(chunk)
 
-                try:
+                    for ref_id in payload.get("reference_ids", []):
+                        ref_path = Path(f"./temp_ref_{job_id}_{ref_id}")
+                        r = session.get(
+                            f"{API_URL}/api/worker/media/{ref_id}",
+                            timeout=120,
+                        )
+                        r.raise_for_status()
+                        ref_path.write_bytes(r.content)
+                        reference_files.append(ref_path)
+
                     res = processor.process_job(
                         payload,
                         target_path,

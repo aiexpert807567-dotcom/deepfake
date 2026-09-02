@@ -49,7 +49,7 @@ def _get_restorer():
 
 class FaceRestorer:
     def __init__(self, strength: float = 1.0):
-        self.strength = 1.0
+        self.strength = strength
 
     def restore(self, face_bgr: np.ndarray) -> np.ndarray:
         try:

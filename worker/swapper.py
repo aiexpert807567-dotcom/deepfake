@@ -161,15 +161,15 @@ def _simswap_face(frame, target_face, source_face):
 def _get_inswapper():
     global _inswapper
     if _inswapper is None:
-        import insightface
+        from insightface.model_zoo.inswapper import INSwapper
         import onnxruntime
         if not _INSWAPPER_PATH.exists():
             _download(_INSWAPPER_URL, _INSWAPPER_PATH, "Inswapper 128 fallback (~550 MB)")
-        print(f"[Swapper] Fallback providers: {onnxruntime.get_available_providers()}")
-        _inswapper = insightface.model_zoo.get_model(
-            str(_INSWAPPER_PATH),
-            providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-        )
+        providers = [p for p in ["CUDAExecutionProvider", "CPUExecutionProvider"] if p in onnxruntime.get_available_providers()]
+        print(f"[Swapper] Fallback providers: {providers}")
+        _inswapper = INSwapper(model_file=str(_INSWAPPER_PATH))
+        if _inswapper is None:
+            raise RuntimeError("Inswapper 128 model failed to load (got None) — the .onnx file may be corrupted or truncated; delete worker/models/inswapper_128.onnx and retry")
     return _inswapper
 
 
