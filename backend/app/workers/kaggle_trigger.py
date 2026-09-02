@@ -18,15 +18,7 @@ def trigger_kaggle_run():
     env["KAGGLE_KEY"] = key
 
     result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "kaggle",
-            "kernels",
-            "push",
-            "-p",
-            str(KERNEL_DIR),
-        ],
+        [sys.executable, "-m", "kaggle", "kernels", "push", "-p", str(KERNEL_DIR)],
         env=env,
         capture_output=True,
         text=True,
