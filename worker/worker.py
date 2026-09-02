@@ -113,9 +113,11 @@ def run_worker_loop():
                         upload.raise_for_status()
                     print(f"[Worker] Completed Job: {job_id}")
                 except Exception as exc:
+                    tb_text = traceback.format_exc()
                     print(f"[Worker] Job failed: {exc}")
                     print("[Worker] Full traceback:")
-                    print(traceback.format_exc(), flush=True)
+                    print(tb_text, flush=True)
+                    short_tb = tb_text[-900:] if len(tb_text) > 900 else tb_text
                     session.post(
                         f"{API_URL}/api/worker/update-progress",
                         data={
@@ -123,7 +125,7 @@ def run_worker_loop():
                             "status": "FAILED",
                             "stage": "Processing failed",
                             "progress": 0,
-                            "error": str(exc),
+                            "error": f"{exc}\n\n{short_tb}",
                         },
                         timeout=10,
                     )
