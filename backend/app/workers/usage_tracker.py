@@ -80,11 +80,12 @@ def get_usage() -> dict:
         if state.session_start:
             started = datetime.fromisoformat(state.session_start)
             seconds_used += max((datetime.now(timezone.utc) - started).total_seconds(), 0.0)
+        week_start_value = state.week_start
         session.commit()
 
     hours_used = seconds_used / 3600.0
     hours_remaining = max(WEEKLY_QUOTA_HOURS - hours_used, 0.0)
-    week_start = datetime.fromisoformat(state.week_start)
+    week_start = datetime.fromisoformat(week_start_value)
     next_reset = week_start + timedelta(days=7)
 
     return {
