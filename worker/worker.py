@@ -114,7 +114,7 @@ def run_worker_loop():
                 except Exception as exc:
                     print(f"[Worker] Job failed: {exc}")
                     print("[Worker] Full traceback:")
-                    traceback.print_exc()
+                    print(traceback.format_exc(), flush=True)
                     session.post(
                         f"{API_URL}/api/worker/update-progress",
                         data={
