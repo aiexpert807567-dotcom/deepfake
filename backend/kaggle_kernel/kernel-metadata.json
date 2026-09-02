@@ -1,6 +1,6 @@
 {
-  "id": "aiexpert80756/deepfake",
-  "title": "deepfake",
+  "id": "aiexpert80756/deepfake-worker-v2",
+  "title": "deepfake-worker-v2",
   "code_file": "deepfake.ipynb",
   "language": "python",
   "kernel_type": "notebook",
