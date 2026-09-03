@@ -135,7 +135,7 @@ def _paste_back(frame, swapped_rgb, matrix, face, size=512):
 
     center = (int(xs.mean()), int(ys.mean()))
     try:
-        result = cv2.seamlessClone(warped, frame, mask_full, center, cv2.MIXED_CLONE)
+        result = cv2.seamlessClone(warped, frame, mask_full, center, cv2.NORMAL_CLONE)
         return result
     except Exception:
         mask = (mask_full.astype(np.float32) / 255.0)[..., None]
