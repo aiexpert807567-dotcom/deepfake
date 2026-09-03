@@ -119,29 +119,15 @@ def _paste_back(frame, swapped_rgb, matrix, face, size=512):
     swapped_bgr = cv2.cvtColor(np.clip(swapped_rgb, 0, 255).astype(np.uint8), cv2.COLOR_RGB2BGR)
 
     warped = cv2.warpAffine(swapped_bgr, inv, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_TRANSPARENT)
+    mask_small = np.zeros((size, size), dtype=np.float32)
+    cv2.ellipse(mask_small, (size // 2, int(size * 0.54)), (int(size * 0.39), int(size * 0.47)), 0, 0, 360, 1.0, -1)
+    mask_small = cv2.GaussianBlur(mask_small, (0, 0), size * 0.035)
+    mask = cv2.warpAffine(mask_small, inv, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+    mask = mask[..., None].clip(0.0, 1.0)
 
-    # A wider mask lets the swap's actual bone structure/jawline come through
-    # (not just the target's outline) — professional tools rely on Poisson
-    # blending precisely so a wider mask like this doesn't produce a seam.
-    mask_small = np.zeros((size, size), dtype=np.uint8)
-    cv2.ellipse(mask_small, (size // 2, int(size * 0.56)), (int(size * 0.47), int(size * 0.58)), 0, 0, 360, 255, -1)
-    mask_full = cv2.warpAffine(mask_small, inv, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
-
-    ys, xs = np.where(mask_full > 10)
-    if len(xs) == 0:
-        mask = (mask_full.astype(np.float32) / 255.0)[..., None]
-        result = frame.astype(np.float32) * (1.0 - mask) + warped.astype(np.float32) * mask
-        return np.clip(result, 0, 255).astype(np.uint8)
-
-    center = (int(xs.mean()), int(ys.mean()))
-    try:
-        result = cv2.seamlessClone(warped, frame, mask_full, center, cv2.NORMAL_CLONE)
-        return result
-    except Exception:
-        mask = (mask_full.astype(np.float32) / 255.0)[..., None]
-        mask = cv2.GaussianBlur(mask, (0, 0), size * 0.02)
-        result = frame.astype(np.float32) * (1.0 - mask) + warped.astype(np.float32) * mask
-        return np.clip(result, 0, 255).astype(np.uint8)
+    # Keep the original outside the aligned face and softly blend the boundary.
+    result = frame.astype(np.float32) * (1.0 - mask) + warped.astype(np.float32) * mask
+    return np.clip(result, 0, 255).astype(np.uint8)
 
 
 def _simswap_face(frame, target_face, source_face):

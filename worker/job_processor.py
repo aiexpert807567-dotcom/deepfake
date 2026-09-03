@@ -104,12 +104,11 @@ class JobProcessor:
         return selected,best['index']
 
     def _finish_frame(self, original, swapped, bbox, payload, temporal=False):
+        if payload.get('occlusion_handling',True):
+            swapped=blend_with_occlusion_protection(original,swapped,bbox,feather_radius=max(int((bbox[2]-bbox[0])*0.025),4))
         if payload.get('color_matching',True):
-            swapped=match_face_region(swapped,original,bbox,strength=0.55)
-        # _preserve_target_detail intentionally removed: it re-injected the
-        # TARGET's own facial structure/luminance detail back into the swap,
-        # which directly fights identity transfer and was pulling jawline/
-        # face shape back toward the target instead of the reference.
+            swapped=match_face_region(swapped,original,bbox,strength=0.72)
+        swapped=self._preserve_target_detail(original,swapped,bbox,strength=0.22)
         if payload.get('face_restoration',False): swapped=self._restore_face_region(swapped,bbox,self.restorer)
         swapped=self._sharpen_face_region(swapped,bbox)
         if temporal: swapped=self.stabilizer.smooth_face(swapped,bbox)
