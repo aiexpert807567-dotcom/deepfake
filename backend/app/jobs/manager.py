@@ -78,7 +78,7 @@ class JobManager:
         with Session(self.engine) as session:
             session.add(record)
             session.commit()
-        return self._response(record)
+            return self._response(record)
 
     def get_job(self, job_id: str) -> Optional[JobResponse]:
         with Session(self.engine) as session:
