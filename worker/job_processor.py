@@ -98,7 +98,9 @@ class JobProcessor:
         selected=best['face']
         if len(scored)>1 and scored[1][0]-best_score<0.10:
             second=scored[1][1]; emb=0.65*best['embedding']+0.35*second['embedding']; emb/=np.linalg.norm(emb)+1e-8
-            selected=copy.copy(best['face']); selected.embedding=emb.astype(np.float32)
+            base_face=best['face']
+            selected=type(base_face)(base_face)  # Face's copy protocol is broken (__setstate__ resolves to None); rebuild via its own dict-like constructor instead
+            selected['embedding']=emb.astype(np.float32)
         return selected,best['index']
 
     def _finish_frame(self, original, swapped, bbox, payload, temporal=False):
