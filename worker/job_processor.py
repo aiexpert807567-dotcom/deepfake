@@ -107,8 +107,13 @@ class JobProcessor:
         if payload.get('occlusion_handling',True):
             swapped=blend_with_occlusion_protection(original,swapped,bbox,feather_radius=max(int((bbox[2]-bbox[0])*0.025),4))
         if payload.get('color_matching',True):
-            swapped=match_face_region(swapped,original,bbox,strength=0.72)
-        swapped=self._preserve_target_detail(original,swapped,bbox,strength=0.22)
+            swapped=match_face_region(swapped,original,bbox,strength=0.45)
+        # _preserve_target_detail strength cut drastically (0.22 -> 0.06):
+        # at 0.22 combined with the other three re-blend passes, almost the
+        # entire swapped identity was being erased back toward the target,
+        # leaving only minor additions (e.g. a goatee) instead of the actual
+        # reference face. A little of this pass still helps hide seams.
+        swapped=self._preserve_target_detail(original,swapped,bbox,strength=0.06)
         if payload.get('face_restoration',False): swapped=self._restore_face_region(swapped,bbox,self.restorer)
         swapped=self._sharpen_face_region(swapped,bbox)
         if temporal: swapped=self.stabilizer.smooth_face(swapped,bbox)
