@@ -143,7 +143,11 @@ class JobProcessor:
             selected,_=self._select_reference(reference_candidates,target_face)
             if selected is None: selected=source_face
             swapped=swap_face(tgt,target_face,selected)
-            swapped=self._finish_frame(tgt,swapped,target_face.bbox,job_payload,False)
+            import os
+            if os.environ.get('DEBUG_RAW_SWAP') == '1':
+                print('[DEBUG] Skipping _finish_frame post-processing entirely (DEBUG_RAW_SWAP=1)')
+            else:
+                swapped=self._finish_frame(tgt,swapped,target_face.bbox,job_payload,False)
             res_path=out_dir/'result.png'; cv2.imwrite(str(res_path),swapped,[cv2.IMWRITE_PNG_COMPRESSION,3])
             progress_cb(100.0,'COMPLETED','High-quality image transformation complete'); return res_path
 
