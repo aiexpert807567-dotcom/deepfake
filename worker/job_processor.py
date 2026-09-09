@@ -142,7 +142,10 @@ class JobProcessor:
             else: target_face=max(faces,key=lambda f:(f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]))
             selected,_=self._select_reference(reference_candidates,target_face)
             if selected is None: selected=source_face
-            swapped=swap_face(tgt,target_face,selected)
+            swapped,backend_used,fallback_err=swap_face(tgt,target_face,selected)
+            diff_mean=float(np.abs(swapped.astype(np.int16)-tgt.astype(np.int16)).mean())
+            swap_msg=f"Swap backend: {backend_used}, mean pixel diff: {diff_mean:.2f}" + (f", fallback reason: {fallback_err}" if fallback_err else "")
+            progress_cb(35.0,'PROCESSING',swap_msg,warning=swap_msg)
             import os
             if os.environ.get('DEBUG_RAW_SWAP') == '1':
                 print('[DEBUG] Skipping _finish_frame post-processing entirely (DEBUG_RAW_SWAP=1)')
@@ -172,7 +175,7 @@ class JobProcessor:
             if chosen is not None:
                 selected,prev_ref_index=self._select_reference(reference_candidates,chosen,prev_ref_index)
                 if selected is None: selected=source_face
-                out_frame=swap_face(frame,chosen,selected); swapped_count+=1
+                out_frame,_bk,_ferr=swap_face(frame,chosen,selected); swapped_count+=1
                 out_frame=self._finish_frame(frame,out_frame,chosen.bbox,job_payload,bool(job_payload.get('temporal_stabilization',True)))
             else:
                 self.stabilizer.reset(); out_frame=frame

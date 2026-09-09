@@ -175,7 +175,10 @@ def _get_inswapper():
 
 def swap_face(frame, target_face, source_face):
     try:
-        return _simswap_face(frame, target_face, source_face)
+        result = _simswap_face(frame, target_face, source_face)
+        return result, "simswap512", None
     except Exception as exc:
-        print(f"[Swapper] SimSwap 512 failed; falling back to Inswapper 128: {exc}")
-        return _get_inswapper().get(frame, target_face, source_face, paste_back=True)
+        err_text = f"{type(exc).__name__}: {exc}"
+        print(f"[Swapper] SimSwap 512 failed; falling back to Inswapper 128: {err_text}")
+        result = _get_inswapper().get(frame, target_face, source_face, paste_back=True)
+        return result, "inswapper128_fallback", err_text
