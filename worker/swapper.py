@@ -174,11 +174,14 @@ def _get_inswapper():
 
 
 def swap_face(frame, target_face, source_face):
+    # SimSwap 512 produces near-zero pixel change in practice (measured
+    # mean diff ~2.79 on a full portrait) — the embedding-converter model
+    # pairing is unreliable. Using Inswapper 128 as primary: it's the
+    # official, well-established insightface code path and actually swaps.
     try:
-        result = _simswap_face(frame, target_face, source_face)
-        return result, "simswap512", None
+        result = _get_inswapper().get(frame, target_face, source_face, paste_back=True)
+        return result, "inswapper128", None
     except Exception as exc:
         err_text = f"{type(exc).__name__}: {exc}"
-        print(f"[Swapper] SimSwap 512 failed; falling back to Inswapper 128: {err_text}")
-        result = _get_inswapper().get(frame, target_face, source_face, paste_back=True)
-        return result, "inswapper128_fallback", err_text
+        print(f"[Swapper] Inswapper 128 failed: {err_text}")
+        raise
