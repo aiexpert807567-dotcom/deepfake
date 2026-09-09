@@ -174,17 +174,11 @@ def _get_inswapper():
 
 
 def swap_face(frame, target_face, source_face):
-    # SimSwap 512 produces near-zero pixel change in practice — unreliable
-    # converter pairing. Using Inswapper 128, but with paste_back=False so
-    # WE control the blend mask (wider than insightface's built-in one),
-    # letting more of the reference's actual face shape/jawline survive.
-    try:
-        inswapper = _get_inswapper()
-        raw, matrix = inswapper.get(frame, target_face, source_face, paste_back=False)
-        result = _paste_back(frame, cv2.cvtColor(raw, cv2.COLOR_BGR2RGB), matrix, target_face, raw.shape[0])
-        return result, "inswapper128_custom_blend", None
-    except Exception as exc:
-        err_text = f"{type(exc).__name__}: {exc}"
-        print(f"[Swapper] Inswapper 128 custom blend failed, using library default paste-back: {err_text}")
-        result = _get_inswapper().get(frame, target_face, source_face, paste_back=True)
-        return result, "inswapper128_default_blend", err_text
+    # Reverted to insightface's own paste_back=True: this is the one
+    # configuration that has actually produced a real, verified identity
+    # transfer today (eyes/expression matched the reference). Our custom
+    # wide-mask attempt (paste_back=False + manual blend) did not improve
+    # on this and may have introduced its own bug — not worth the
+    # complexity until we have a cleaner way to verify it in isolation.
+    result = _get_inswapper().get(frame, target_face, source_face, paste_back=True)
+    return result, "inswapper128_default_blend", None
